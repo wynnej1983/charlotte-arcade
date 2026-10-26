@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Snake · Charlotte Arcade</title>
+<link rel="stylesheet" href="../shared.css" />
+<style>
+  .stage {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  #game {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    display: block;
+    border-radius: 20px;
+    background: var(--screen-bg);
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 16px 40px rgba(27, 27, 51, 0.18);
+  }
+
+  .touch-controls {
+    display: grid;
+    grid-template-columns: 60px 60px 60px;
+    grid-template-rows: 50px 50px 50px;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 18px;
+  }
+
+  .touch-controls button {
+    font-size: 1.3rem;
+    padding: 0;
+  }
+
+  .tc-up { grid-column: 2; grid-row: 1; }
+  .tc-left { grid-column: 1; grid-row: 2; }
+  .tc-down { grid-column: 2; grid-row: 2; }
+  .tc-right { grid-column: 3; grid-row: 2; }
+
+  @media (hover: hover) and (pointer: fine) {
+    .touch-controls { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+<canvas id="fx"></canvas>
+
+<div class="topbar">
+  <a class="back btn icon" href="../index.html">←</a>
+</div>
+
+<h1>🐍 Snake</h1>
+<p class="subtitle">Arrow keys or WASD to steer. Eat the orbs, don't bite yourself.</p>
+
+<div class="panel">
+  <div class="stat">
+    <div class="label">Score</div>
+    <div class="value" id="score">0</div>
+  </div>
+  <div class="stat">
+    <div class="label">High Score</div>
+    <div class="value" id="highscore">0</div>
+  </div>
+  <button class="primary" id="restart">New Game</button>
+  <button class="icon" id="mute" title="Toggle sound">🔊</button>
+</div>
+
+<div class="stage">
+  <canvas id="game" width="480" height="480"></canvas>
+</div>
+
+<div class="touch-controls">
+  <button class="tc-up" id="btnUp">⬆️</button>
+  <button class="tc-left" id="btnLeft">⬅️</button>
+  <button class="tc-down" id="btnDown">⬇️</button>
+  <button class="tc-right" id="btnRight">➡️</button>
+</div>
+
+<div class="banner lose" id="overBanner">
+  <h2>Game Over</h2>
+  <p id="overStats"></p>
+  <button class="primary" id="playAgain">Play Again</button>
+</div>
+
+<footer>Your high score is saved locally in this browser.</footer>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const highscoreEl = document.getElementById('highscore');
+  const restartBtn = document.getElementById('restart');
+  const playAgainBtn = document.getElementById('playAgain');
+  const overBanner = document.getElementById('overBanner');
+  const overStats = document.getElementById('overStats');
+
+  const COLS = 24, ROWS = 24;
+  const CELL = canvas.width / COLS;
+  const HIGH_KEY = 'arcade-snake-highscore';
+
+  let snake, dir, nextDir, food, score, loopHandle, speedMs, running;
+
+  function loadHigh() {
+    return parseInt(localStorage.getItem(HIGH_KEY) || '0', 10);
+  }
+
+  function saveHighIfBetter() {
+    const prev = loadHigh();
+    if (score > prev) {
+      localStorage.setItem(HIGH_KEY, String(score));
+      return true;
+    }
+    return false;
+  }
+
+  function randCell() {
+    return { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+  }
+
+  function placeFood() {
+    let f;
+    do {
+      f = randCell();
+    } while (snake.some(s => s.x === f.x && s.y === f.y));
+    food = f;
+  }
+
+  function cellToScreen(cell) {
+    const r = canvas.getBoundingClientRect();
+    const scaleX = r.width / canvas.width;
+    const scaleY = r.height / canvas.height;
+    return {
+      x: r.left + (cell.x + 0.5) * CELL * scaleX,
+      y: r.top + (cell.y + 0.5) * CELL * scaleY
+    };
+  }
+
+  function reset() {
+    snake = [
+      { x: 11, y: 12 }, { x: 10, y: 12 }, { x: 9, y: 12 }, { x: 8, y: 12 }
+    ];
+    dir = { x: 1, y: 0 };
+    nextDir = { x: 1, y: 0 };
+    score = 0;
+    speedMs = 110;
+    running = true;
+    scoreEl.textContent = '0';
+    highscoreEl.textContent = loadHigh();
+    overBanner.classList.remove('show');
+    placeFood();
+    stopLoop();
+    loopHandle = setInterval(tick, speedMs);
+  }
+
+  function stopLoop() {
+    if (loopHandle) clearInterval(loopHandle);
+    loopHandle = null;
+  }
+
+  function restartLoopWithSpeed() {
+    stopLoop();
+    loopHandle = setInterval(tick, speedMs);
+  }
+
+  function tick() {
+    if (!running) return;
+    dir = nextDir;
+    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+    const hitsWall = head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS;
+    const hitsSelf = snake.some(s => s.x === head.x && s.y === head.y);
+
+    if (hitsWall || hitsSelf) {
+      gameOver();
+      return;
+    }
+
+    snake.unshift(head);
+
+    if (head.x === food.x && head.y === food.y) {
+      score++;
+      scoreEl.textContent = score;
+      Arcade.sfxHit();
+      const p = cellToScreen(food);
+      Arcade.spawnBurst(p.x, p.y);
+      placeFood();
+      if (speedMs > 55 && score % 4 === 0) {
+        speedMs -= 6;
+        restartLoopWithSpeed();
+      }
+    } else {
+      snake.pop();
+    }
+
+    draw();
+  }
+
+  function gameOver() {
+    running = false;
+    stopLoop();
+    const isNewBest = saveHighIfBetter();
+    highscoreEl.textContent = loadHigh();
+    overStats.textContent = `Score: ${score}${isNewBest ? ' · new high score! 🏆' : ''}`;
+    overBanner.classList.add('show');
+    Arcade.sfxGameOver();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    for (let i = 1; i < COLS; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * CELL, 0);
+      ctx.lineTo(i * CELL, canvas.height);
+      ctx.stroke();
+    }
+    for (let j = 1; j < ROWS; j++) {
+      ctx.beginPath();
+      ctx.moveTo(0, j * CELL);
+      ctx.lineTo(canvas.width, j * CELL);
+      ctx.stroke();
+    }
+
+    const pulse = 0.5 + Math.sin(Date.now() / 150) * 0.2;
+    ctx.save();
+    ctx.shadowColor = '#ff3d7f';
+    ctx.shadowBlur = 16 * (1 + pulse);
+    ctx.fillStyle = '#ff3d7f';
+    ctx.beginPath();
+    ctx.arc((food.x + 0.5) * CELL, (food.y + 0.5) * CELL, CELL * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    snake.forEach((seg, i) => {
+      const t = i / snake.length;
+      const r = Math.round(0 + t * 123);
+      const g = Math.round(229 - t * 182);
+      const b = Math.round(255 - t * 8);
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      const pad = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(seg.x * CELL + pad, seg.y * CELL + pad, CELL - pad * 2, CELL - pad * 2, 5);
+      ctx.fill();
+    });
+  }
+
+  function setDir(x, y) {
+    if (dir.x === -x && dir.y === -y) return;
+    nextDir = { x, y };
+  }
+
+  document.addEventListener('keydown', (e) => {
+    switch (e.key) {
+      case 'ArrowUp': case 'w': case 'W': setDir(0, -1); break;
+      case 'ArrowDown': case 's': case 'S': setDir(0, 1); break;
+      case 'ArrowLeft': case 'a': case 'A': setDir(-1, 0); break;
+      case 'ArrowRight': case 'd': case 'D': setDir(1, 0); break;
+    }
+  });
+
+  document.getElementById('btnUp').addEventListener('click', () => setDir(0, -1));
+  document.getElementById('btnDown').addEventListener('click', () => setDir(0, 1));
+  document.getElementById('btnLeft').addEventListener('click', () => setDir(-1, 0));
+  document.getElementById('btnRight').addEventListener('click', () => setDir(1, 0));
+
+  let touchStart = null;
+  canvas.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    touchStart = { x: t.clientX, y: t.clientY };
+  }, { passive: true });
+  canvas.addEventListener('touchend', (e) => {
+    if (!touchStart) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      setDir(dx > 0 ? 1 : -1, 0);
+    } else {
+      setDir(0, dy > 0 ? 1 : -1);
+    }
+    touchStart = null;
+  }, { passive: true });
+
+  restartBtn.addEventListener('click', reset);
+  playAgainBtn.addEventListener('click', reset);
+  Arcade.setupMuteButton(document.getElementById('mute'));
+
+  reset();
+  draw();
+})();
+</script>
+
+</body>
+</html>

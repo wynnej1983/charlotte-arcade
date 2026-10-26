@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Whack-a-Mole · Charlotte Arcade</title>
+<link rel="stylesheet" href="../shared.css" />
+<style>
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .hole {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background: radial-gradient(circle at 50% 60%, #241b3f, #0f0b1f 70%);
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.08);
+    overflow: hidden;
+    box-shadow: inset 0 8px 18px rgba(0,0,0,0.6);
+    cursor: pointer;
+  }
+
+  .critter {
+    position: absolute;
+    left: 50%;
+    bottom: -100%;
+    transform: translate(-50%, 0);
+    font-size: clamp(2rem, 9vw, 3rem);
+    transition: bottom 0.15s cubic-bezier(.34,1.56,.64,1);
+    user-select: none;
+  }
+
+  .hole.active .critter {
+    bottom: 8%;
+  }
+
+  .hole.hit .critter {
+    animation: hitPop 0.25s ease;
+  }
+
+  @keyframes hitPop {
+    0% { transform: translate(-50%, 0) scale(1); }
+    50% { transform: translate(-50%, 0) scale(1.4); }
+    100% { transform: translate(-50%, 0) scale(0); }
+  }
+
+  .start-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin-top: 18px;
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+<canvas id="fx"></canvas>
+
+<div class="topbar">
+  <a class="back btn icon" href="../index.html">←</a>
+</div>
+
+<h1>🔨 Whack-a-Mole</h1>
+<p class="subtitle">🐹 +10 · ⭐ +30 (fast!) · 💣 avoid it, -15. 30 seconds on the clock.</p>
+
+<div class="panel">
+  <div class="stat">
+    <div class="label">Score</div>
+    <div class="value" id="score">0</div>
+  </div>
+  <div class="stat">
+    <div class="label">Time</div>
+    <div class="value" id="timeLeft">30</div>
+  </div>
+  <div class="stat">
+    <div class="label">High Score</div>
+    <div class="value" id="highscore">0</div>
+  </div>
+  <button class="icon" id="mute" title="Toggle sound">🔊</button>
+</div>
+
+<div class="board" id="board"></div>
+
+<div class="start-overlay" id="startOverlay">
+  <button class="primary" id="startBtn">Start Round</button>
+</div>
+
+<div class="banner" id="overBanner">
+  <h2>Time's up!</h2>
+  <p id="overStats"></p>
+  <button class="primary" id="playAgain">Play Again</button>
+</div>
+
+<footer>Your high score is saved locally in this browser.</footer>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+  const boardEl = document.getElementById('board');
+  const scoreEl = document.getElementById('score');
+  const timeLeftEl = document.getElementById('timeLeft');
+  const highscoreEl = document.getElementById('highscore');
+  const startOverlay = document.getElementById('startOverlay');
+  const startBtn = document.getElementById('startBtn');
+  const overBanner = document.getElementById('overBanner');
+  const overStats = document.getElementById('overStats');
+  const playAgainBtn = document.getElementById('playAgain');
+
+  const HIGH_KEY = 'arcade-whack-highscore';
+  const ROUND_SECONDS = 30;
+  const HOLE_COUNT = 9;
+
+  let holes, score, timeLeft, timerHandle, spawnHandle, running;
+
+  function loadHigh() {
+    return parseInt(localStorage.getItem(HIGH_KEY) || '0', 10);
+  }
+
+  function saveHighIfBetter() {
+    const prev = loadHigh();
+    if (score > prev) {
+      localStorage.setItem(HIGH_KEY, String(score));
+      return true;
+    }
+    return false;
+  }
+
+  function buildBoard() {
+    boardEl.innerHTML = '';
+    holes = [];
+    for (let i = 0; i < HOLE_COUNT; i++) {
+      const hole = document.createElement('div');
+      hole.className = 'hole';
+      const critter = document.createElement('div');
+      critter.className = 'critter';
+      hole.appendChild(critter);
+      hole.addEventListener('click', () => onHit(i));
+      boardEl.appendChild(hole);
+      holes.push({ el: hole, critterEl: critter, active: false, type: null, hideTimeout: null });
+    }
+  }
+
+  function randomFreeHole() {
+    const free = holes.map((h, i) => (!h.active ? i : -1)).filter(i => i >= 0);
+    if (!free.length) return -1;
+    return free[Math.floor(Math.random() * free.length)];
+  }
+
+  function pickType() {
+    const r = Math.random();
+    if (r < 0.12) return { emoji: '⭐', kind: 'star', points: 30, life: 650 };
+    if (r < 0.28) return { emoji: '💣', kind: 'bomb', points: -15, life: 900 };
+    return { emoji: '🐹', kind: 'mole', points: 10, life: 1100 };
+  }
+
+  function holeCenter(hole) {
+    const r = hole.el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  function spawnOne() {
+    if (!running) return;
+    const idx = randomFreeHole();
+    if (idx === -1) return;
+    const hole = holes[idx];
+    const type = pickType();
+    hole.active = true;
+    hole.type = type;
+    hole.critterEl.textContent = type.emoji;
+    hole.el.classList.add('active');
+    hole.el.classList.remove('hit');
+
+    hole.hideTimeout = setTimeout(() => {
+      hideHole(hole);
+    }, type.life);
+  }
+
+  function hideHole(hole) {
+    hole.active = false;
+    hole.el.classList.remove('active');
+    clearTimeout(hole.hideTimeout);
+  }
+
+  function onHit(idx) {
+    if (!running) return;
+    const hole = holes[idx];
+    if (!hole.active) return;
+
+    const type = hole.type;
+    score += type.points;
+    if (score < 0) score = 0;
+    scoreEl.textContent = score;
+
+    hole.el.classList.add('hit');
+    setTimeout(() => hole.el.classList.remove('hit'), 250);
+
+    const p = holeCenter(hole);
+    if (type.kind === 'bomb') {
+      Arcade.sfxMiss();
+    } else {
+      Arcade.spawnBurst(p.x, p.y);
+      type.kind === 'star' ? Arcade.sfxWin() : Arcade.sfxHit();
+    }
+
+    hideHole(hole);
+  }
+
+  function scheduleNextSpawn() {
+    if (!running) return;
+    const delay = 450 + Math.random() * 500;
+    spawnHandle = setTimeout(() => {
+      spawnOne();
+      scheduleNextSpawn();
+    }, delay);
+  }
+
+  function tickTimer() {
+    timeLeft--;
+    timeLeftEl.textContent = timeLeft;
+    if (timeLeft <= 0) endRound();
+  }
+
+  function startRound() {
+    buildBoard();
+    score = 0;
+    timeLeft = ROUND_SECONDS;
+    scoreEl.textContent = '0';
+    timeLeftEl.textContent = timeLeft;
+    highscoreEl.textContent = loadHigh();
+    running = true;
+    startOverlay.style.display = 'none';
+    overBanner.classList.remove('show');
+
+    timerHandle = setInterval(tickTimer, 1000);
+    scheduleNextSpawn();
+  }
+
+  function endRound() {
+    running = false;
+    clearInterval(timerHandle);
+    clearTimeout(spawnHandle);
+    holes.forEach(hideHole);
+
+    const isNewBest = saveHighIfBetter();
+    highscoreEl.textContent = loadHigh();
+    overStats.textContent = `Final score: ${score}${isNewBest ? ' · new high score! 🏆' : ''}`;
+    overBanner.classList.add('show');
+    if (isNewBest) {
+      Arcade.spawnConfetti();
+      Arcade.sfxWin();
+    } else {
+      Arcade.sfxGameOver();
+    }
+  }
+
+  buildBoard();
+  highscoreEl.textContent = loadHigh();
+  startBtn.addEventListener('click', startRound);
+  playAgainBtn.addEventListener('click', startRound);
+  Arcade.setupMuteButton(document.getElementById('mute'));
+})();
+</script>
+
+</body>
+</html>

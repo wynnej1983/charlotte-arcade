@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Simon Says · Charlotte Arcade</title>
+<link rel="stylesheet" href="../shared.css" />
+<style>
+  .pad-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    width: 100%;
+    max-width: 360px;
+    background: var(--screen-bg);
+    border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(27, 27, 51, 0.18);
+    padding: 24px;
+    transition: transform 0.05s ease;
+  }
+
+  .pad-grid.locked {
+    cursor: not-allowed;
+  }
+
+  .pad-grid.shake {
+    animation: shake 0.4s ease;
+  }
+
+  @keyframes shake {
+    10%, 90% { transform: translateX(-4px); }
+    20%, 80% { transform: translateX(6px); }
+    30%, 50%, 70% { transform: translateX(-8px); }
+    40%, 60% { transform: translateX(8px); }
+  }
+
+  .pad {
+    aspect-ratio: 1 / 1;
+    border-radius: 18px;
+    cursor: pointer;
+    user-select: none;
+    filter: brightness(0.5) saturate(0.85);
+    transition: filter 0.1s ease, transform 0.1s ease, box-shadow 0.1s ease;
+  }
+
+  .pad-grid.locked .pad {
+    cursor: not-allowed;
+  }
+
+  .pad.red { background: #ff3b5c; color: #ff3b5c; }
+  .pad.blue { background: #3b82ff; color: #3b82ff; }
+  .pad.green { background: #2ecc71; color: #2ecc71; }
+  .pad.yellow { background: #ffd93d; color: #ffd93d; }
+
+  .pad.lit {
+    filter: brightness(1.25) saturate(1.3);
+    transform: scale(0.96);
+    box-shadow: 0 0 36px 8px currentColor;
+  }
+
+  .pad.wrong {
+    filter: brightness(1.3);
+    box-shadow: 0 0 36px 10px var(--lose);
+  }
+
+  .status {
+    margin-top: 16px;
+    color: var(--muted);
+    min-height: 1.2em;
+    text-align: center;
+  }
+
+  .status.thinking::after {
+    content: "…";
+    animation: dots 1s steps(4) infinite;
+  }
+
+  @keyframes dots {
+    0% { content: "."; }
+    33% { content: ".."; }
+    66% { content: "..."; }
+    100% { content: "."; }
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+<canvas id="fx"></canvas>
+
+<div class="topbar">
+  <a class="back btn icon" href="../index.html">←</a>
+</div>
+
+<h1>🎵 Simon Says</h1>
+<p class="subtitle">Watch the sequence, then repeat it. One slip and it's over.</p>
+
+<div class="panel">
+  <div class="stat">
+    <div class="label">Round</div>
+    <div class="value" id="round">0</div>
+  </div>
+  <div class="stat">
+    <div class="label">Best</div>
+    <div class="value" id="best">0</div>
+  </div>
+  <button class="primary" id="startBtn">New Game</button>
+  <button class="icon" id="mute" title="Toggle sound">🔊</button>
+</div>
+
+<div class="pad-grid locked" id="padGrid">
+  <div class="pad red" data-idx="0"></div>
+  <div class="pad blue" data-idx="1"></div>
+  <div class="pad green" data-idx="2"></div>
+  <div class="pad yellow" data-idx="3"></div>
+</div>
+<p class="status" id="status">Press New Game to begin.</p>
+
+<div class="banner lose" id="banner">
+  <h2 id="bannerTitle">Game Over</h2>
+  <p id="bannerScore">You reached a sequence of 0.</p>
+  <p id="bannerBest">Best: 0</p>
+  <button class="primary" id="replayBtn">Play Again</button>
+</div>
+
+<footer>Your best sequence length is saved locally in this browser.</footer>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+  const gridEl = document.getElementById('padGrid');
+  const statusEl = document.getElementById('status');
+  const roundEl = document.getElementById('round');
+  const bestEl = document.getElementById('best');
+  const startBtn = document.getElementById('startBtn');
+  const bannerEl = document.getElementById('banner');
+  const bannerScore = document.getElementById('bannerScore');
+  const bannerBest = document.getElementById('bannerBest');
+  const replayBtn = document.getElementById('replayBtn');
+
+  const HIGHSCORE_KEY = 'arcade-simon-highscore';
+  const PADS = [
+    { name: 'red', freq: 330 },
+    { name: 'blue', freq: 392 },
+    { name: 'green', freq: 262 },
+    { name: 'yellow', freq: 440 }
+  ];
+
+  const pads = Array.from(gridEl.querySelectorAll('.pad'));
+  pads.forEach(pad => {
+    pad.addEventListener('click', () => onPadClick(Number(pad.dataset.idx)));
+  });
+
+  let sequence = [];
+  let playerIndex = 0;
+  let isPlayerTurn = false;
+  let gameOver = true;
+  let best = loadBest();
+
+  let localAudioCtx = null;
+  function getCtx() {
+    if (!localAudioCtx) localAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return localAudioCtx;
+  }
+
+  function playPadTone(idx) {
+    if (Arcade.isMuted()) return;
+    const ctx = getCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = PADS[idx].freq;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+    osc.start(now);
+    osc.stop(now + 0.36);
+  }
+
+  function loadBest() {
+    const v = parseInt(localStorage.getItem(HIGHSCORE_KEY), 10);
+    return Number.isFinite(v) ? v : 0;
+  }
+
+  function saveBest() {
+    localStorage.setItem(HIGHSCORE_KEY, String(best));
+  }
+
+  function updateStats() {
+    roundEl.textContent = sequence.length;
+    bestEl.textContent = best;
+  }
+
+  function setLocked(locked) {
+    gridEl.classList.toggle('locked', locked);
+  }
+
+  function flashPad(idx, dur) {
+    const pad = pads[idx];
+    pad.classList.add('lit');
+    setTimeout(() => pad.classList.remove('lit'), dur);
+  }
+
+  function flashDuration() {
+    return Math.max(250, 480 - sequence.length * 18);
+  }
+
+  function addRandomPad() {
+    sequence.push(Math.floor(Math.random() * 4));
+  }
+
+  function playSequence() {
+    isPlayerTurn = false;
+    playerIndex = 0;
+    setLocked(true);
+    statusEl.classList.add('thinking');
+    statusEl.textContent = 'Watch the sequence...';
+
+    const dur = flashDuration();
+    const gap = dur + 180;
+    let i = 0;
+
+    function step() {
+      if (i >= sequence.length) {
+        statusEl.classList.remove('thinking');
+        statusEl.textContent = 'Your turn!';
+        setLocked(false);
+        isPlayerTurn = true;
+        return;
+      }
+      const idx = sequence[i];
+      flashPad(idx, dur);
+      playPadTone(idx);
+      i++;
+      setTimeout(step, gap);
+    }
+
+    setTimeout(step, 500);
+  }
+
+  function roundComplete() {
+    isPlayerTurn = false;
+    setLocked(true);
+    statusEl.textContent = 'Nice! Next round...';
+    setTimeout(() => {
+      addRandomPad();
+      updateStats();
+      playSequence();
+    }, 700);
+  }
+
+  function onPadClick(idx) {
+    if (!isPlayerTurn || gameOver) return;
+    flashPad(idx, 280);
+    playPadTone(idx);
+    Arcade.sfxFlip();
+
+    if (sequence[playerIndex] === idx) {
+      playerIndex++;
+      if (playerIndex === sequence.length) {
+        roundComplete();
+      }
+    } else {
+      wrongTap(idx);
+    }
+  }
+
+  function wrongTap(idx) {
+    isPlayerTurn = false;
+    gameOver = true;
+    setLocked(true);
+    const pad = pads[idx];
+    pad.classList.add('wrong');
+    gridEl.classList.add('shake');
+
+    const score = sequence.length - 1;
+    const isNewBest = score > best;
+    if (isNewBest) {
+      best = score;
+      saveBest();
+    }
+    updateStats();
+
+    if (isNewBest) {
+      Arcade.spawnConfetti();
+      Arcade.sfxWin();
+    } else {
+      Arcade.sfxGameOver();
+    }
+
+    setTimeout(() => {
+      pad.classList.remove('wrong');
+      gridEl.classList.remove('shake');
+      showBanner(score, isNewBest);
+    }, 450);
+  }
+
+  function showBanner(score, isNewBest) {
+    bannerScore.textContent = `You reached a sequence of ${score}.`;
+    bannerBest.textContent = isNewBest ? 'New best! 🎉' : `Best: ${best}`;
+    statusEl.textContent = 'Press New Game to try again.';
+    bannerEl.classList.add('show');
+  }
+
+  function newGame() {
+    gameOver = false;
+    sequence = [];
+    playerIndex = 0;
+    bannerEl.classList.remove('show');
+    addRandomPad();
+    updateStats();
+    playSequence();
+  }
+
+  updateStats();
+  startBtn.addEventListener('click', newGame);
+  replayBtn.addEventListener('click', newGame);
+  Arcade.setupMuteButton(document.getElementById('mute'));
+})();
+</script>
+
+</body>
+</html>

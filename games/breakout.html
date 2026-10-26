@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Breakout · Charlotte Arcade</title>
+<link rel="stylesheet" href="../shared.css" />
+<style>
+  .stage {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  #game {
+    width: 100%;
+    aspect-ratio: 480 / 600;
+    display: block;
+    border-radius: 20px;
+    background: var(--screen-bg);
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 16px 40px rgba(27, 27, 51, 0.18);
+    touch-action: none;
+    cursor: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+<canvas id="fx"></canvas>
+
+<div class="topbar">
+  <a class="back btn icon" href="../index.html">←</a>
+</div>
+
+<h1>🧱 Breakout</h1>
+<p class="subtitle">Move the paddle with your mouse, finger, or arrow keys. Clear every brick.</p>
+
+<div class="panel">
+  <div class="stat">
+    <div class="label">Score</div>
+    <div class="value" id="score">0</div>
+  </div>
+  <div class="stat">
+    <div class="label">Lives</div>
+    <div class="value" id="lives">3</div>
+  </div>
+  <div class="stat">
+    <div class="label">Level</div>
+    <div class="value" id="level">1</div>
+  </div>
+  <div class="stat">
+    <div class="label">High Score</div>
+    <div class="value" id="highscore">0</div>
+  </div>
+  <button class="primary" id="restart">New Game</button>
+  <button class="icon" id="mute" title="Toggle sound">🔊</button>
+</div>
+
+<div class="stage">
+  <canvas id="game" width="480" height="600"></canvas>
+</div>
+
+<div class="banner lose" id="overBanner">
+  <h2>Game Over</h2>
+  <p id="overStats"></p>
+  <button class="primary" id="playAgain">Play Again</button>
+</div>
+
+<footer>Click or tap the canvas to launch the ball. High score is saved locally.</footer>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const livesEl = document.getElementById('lives');
+  const levelEl = document.getElementById('level');
+  const highscoreEl = document.getElementById('highscore');
+  const restartBtn = document.getElementById('restart');
+  const playAgainBtn = document.getElementById('playAgain');
+  const overBanner = document.getElementById('overBanner');
+  const overStats = document.getElementById('overStats');
+
+  const W = canvas.width, H = canvas.height;
+  const HIGH_KEY = 'arcade-breakout-highscore';
+  const ROW_COLORS = ['#ff3d7f', '#ffb13d', '#ffd93d', '#39ffb0', '#00e5ff'];
+
+  const BRICK_COLS = 8;
+  const BRICK_ROWS = 5;
+  const BRICK_PAD = 6;
+  const BRICK_TOP = 60;
+  const BRICK_W = (W - BRICK_PAD * (BRICK_COLS + 1)) / BRICK_COLS;
+  const BRICK_H = 22;
+
+  const PADDLE_H = 14;
+  let paddle, ball, bricks, score, lives, level, running, launched, keys, highScore, raf;
+
+  function loadHigh() {
+    return parseInt(localStorage.getItem(HIGH_KEY) || '0', 10);
+  }
+
+  function saveHighIfBetter() {
+    const prev = loadHigh();
+    if (score > prev) {
+      localStorage.setItem(HIGH_KEY, String(score));
+      return true;
+    }
+    return false;
+  }
+
+  function buildBricks() {
+    const arr = [];
+    for (let r = 0; r < BRICK_ROWS; r++) {
+      for (let c = 0; c < BRICK_COLS; c++) {
+        arr.push({
+          x: BRICK_PAD + c * (BRICK_W + BRICK_PAD),
+          y: BRICK_TOP + r * (BRICK_H + BRICK_PAD),
+          alive: true,
+          row: r
+        });
+      }
+    }
+    return arr;
+  }
+
+  function resetBall(onPaddle) {
+    const speed = 4.4 + (level - 1) * 0.5;
+    ball = {
+      x: paddle.x + paddle.w / 2,
+      y: paddle.y - 10,
+      r: 7,
+      vx: onPaddle ? 0 : speed * (Math.random() < 0.5 ? -1 : 1),
+      vy: onPaddle ? 0 : -speed,
+      speed
+    };
+    launched = !onPaddle;
+  }
+
+  function newLevel(resetScoreLives) {
+    paddle = { x: W / 2 - 45, y: H - 36, w: 90, h: PADDLE_H };
+    bricks = buildBricks();
+    if (resetScoreLives) {
+      score = 0;
+      lives = 3;
+      level = 1;
+    }
+    scoreEl.textContent = score;
+    livesEl.textContent = lives;
+    levelEl.textContent = level;
+    resetBall(true);
+  }
+
+  function startGame() {
+    highScore = loadHigh();
+    highscoreEl.textContent = highScore;
+    overBanner.classList.remove('show');
+    running = true;
+    newLevel(true);
+  }
+
+  function loseLife() {
+    lives--;
+    livesEl.textContent = lives;
+    Arcade.sfxMiss();
+    if (lives <= 0) {
+      gameOver();
+    } else {
+      resetBall(true);
+    }
+  }
+
+  function gameOver() {
+    running = false;
+    const isNewBest = saveHighIfBetter();
+    highscoreEl.textContent = loadHigh();
+    overStats.textContent = `Score: ${score} · Level ${level}${isNewBest ? ' · new high score! 🏆' : ''}`;
+    overBanner.classList.add('show');
+    Arcade.sfxGameOver();
+  }
+
+  function brickScreenCenter(b) {
+    const r = canvas.getBoundingClientRect();
+    const scaleX = r.width / W;
+    const scaleY = r.height / H;
+    return {
+      x: r.left + (b.x + BRICK_W / 2) * scaleX,
+      y: r.top + (b.y + BRICK_H / 2) * scaleY
+    };
+  }
+
+  function update() {
+    if (!running) return;
+
+    if (keys.left) paddle.x -= 7;
+    if (keys.right) paddle.x += 7;
+    paddle.x = Math.max(0, Math.min(W - paddle.w, paddle.x));
+
+    if (!launched) {
+      ball.x = paddle.x + paddle.w / 2;
+      ball.y = paddle.y - ball.r - 2;
+      draw();
+      raf = requestAnimationFrame(update);
+      return;
+    }
+
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx *= -1; }
+    if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx *= -1; }
+    if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy *= -1; }
+
+    if (
+      ball.y + ball.r > paddle.y &&
+      ball.y + ball.r < paddle.y + paddle.h + 10 &&
+      ball.x > paddle.x - ball.r &&
+      ball.x < paddle.x + paddle.w + ball.r &&
+      ball.vy > 0
+    ) {
+      const hitPos = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2);
+      const angle = hitPos * (Math.PI / 3);
+      ball.vx = ball.speed * Math.sin(angle);
+      ball.vy = -Math.abs(ball.speed * Math.cos(angle));
+      Arcade.sfxBlip();
+    }
+
+    if (ball.y - ball.r > H) {
+      loseLife();
+      draw();
+      raf = requestAnimationFrame(update);
+      return;
+    }
+
+    for (const b of bricks) {
+      if (!b.alive) continue;
+      if (
+        ball.x + ball.r > b.x && ball.x - ball.r < b.x + BRICK_W &&
+        ball.y + ball.r > b.y && ball.y - ball.r < b.y + BRICK_H
+      ) {
+        b.alive = false;
+        score += (BRICK_ROWS - b.row) * 10;
+        scoreEl.textContent = score;
+        Arcade.sfxHit();
+        const p = brickScreenCenter(b);
+        Arcade.spawnBurst(p.x, p.y);
+
+        const overlapLeft = (ball.x + ball.r) - b.x;
+        const overlapRight = (b.x + BRICK_W) - (ball.x - ball.r);
+        const overlapTop = (ball.y + ball.r) - b.y;
+        const overlapBottom = (b.y + BRICK_H) - (ball.y - ball.r);
+        const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+        if (minOverlap === overlapLeft || minOverlap === overlapRight) {
+          ball.vx *= -1;
+        } else {
+          ball.vy *= -1;
+        }
+        break;
+      }
+    }
+
+    if (bricks.every(b => !b.alive)) {
+      level++;
+      Arcade.sfxWin();
+      newLevel(false);
+    }
+
+    draw();
+    raf = requestAnimationFrame(update);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    bricks.forEach(b => {
+      if (!b.alive) return;
+      ctx.save();
+      const color = ROW_COLORS[b.row % ROW_COLORS.length];
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.roundRect(b.x, b.y, BRICK_W, BRICK_H, 5);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    ctx.save();
+    ctx.shadowColor = '#00e5ff';
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = '#00e5ff';
+    ctx.beginPath();
+    ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 7);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    if (!launched && running) {
+      ctx.fillStyle = 'rgba(244,244,255,0.6)';
+      ctx.font = '16px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Click or tap to launch', W / 2, paddle.y - 30);
+    }
+  }
+
+  function pointerX(clientX) {
+    const r = canvas.getBoundingClientRect();
+    return (clientX - r.left) * (W / r.width);
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    if (!running) return;
+    paddle.x = pointerX(e.clientX) - paddle.w / 2;
+    paddle.x = Math.max(0, Math.min(W - paddle.w, paddle.x));
+  });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (!running) return;
+    const t = e.touches[0];
+    paddle.x = pointerX(t.clientX) - paddle.w / 2;
+    paddle.x = Math.max(0, Math.min(W - paddle.w, paddle.x));
+    e.preventDefault();
+  }, { passive: false });
+
+  function launch() {
+    if (running && !launched) {
+      launched = true;
+      resetBall(false);
+    }
+  }
+  canvas.addEventListener('mousedown', launch);
+  canvas.addEventListener('touchstart', launch, { passive: true });
+
+  keys = { left: false, right: false };
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+    if (e.key === ' ') launch();
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+  });
+
+  restartBtn.addEventListener('click', () => { startGame(); });
+  playAgainBtn.addEventListener('click', () => { startGame(); });
+  Arcade.setupMuteButton(document.getElementById('mute'));
+
+  startGame();
+  raf = requestAnimationFrame(update);
+})();
+</script>
+
+</body>
+</html>

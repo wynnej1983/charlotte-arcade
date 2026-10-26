@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Space Shooter · Charlotte Arcade</title>
+<link rel="stylesheet" href="../shared.css" />
+<style>
+  .stage {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  #game {
+    width: 100%;
+    aspect-ratio: 480 / 600;
+    display: block;
+    border-radius: 20px;
+    background: var(--screen-bg);
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 16px 40px rgba(27, 27, 51, 0.18);
+    touch-action: none;
+    cursor: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+<canvas id="fx"></canvas>
+
+<div class="topbar">
+  <a class="back btn icon" href="../index.html">←</a>
+</div>
+
+<h1>🚀 Space Shooter</h1>
+<p class="subtitle">Move with your mouse, finger, or arrow keys. Your ship auto-fires — dodge and blast the invaders before they reach you.</p>
+
+<div class="panel">
+  <div class="stat">
+    <div class="label">Score</div>
+    <div class="value" id="score">0</div>
+  </div>
+  <div class="stat">
+    <div class="label">Lives</div>
+    <div class="value" id="lives">3</div>
+  </div>
+  <div class="stat">
+    <div class="label">High Score</div>
+    <div class="value" id="highscore">0</div>
+  </div>
+  <button class="primary" id="restart">New Game</button>
+  <button class="icon" id="mute" title="Toggle sound">🔊</button>
+</div>
+
+<div class="stage">
+  <canvas id="game" width="480" height="600"></canvas>
+</div>
+
+<div class="banner lose" id="overBanner">
+  <h2>Game Over</h2>
+  <p id="overStats"></p>
+  <button class="primary" id="playAgain">Play Again</button>
+</div>
+
+<footer>Move to dodge, your ship fires on its own. High score is saved locally.</footer>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const livesEl = document.getElementById('lives');
+  const highscoreEl = document.getElementById('highscore');
+  const restartBtn = document.getElementById('restart');
+  const playAgainBtn = document.getElementById('playAgain');
+  const overBanner = document.getElementById('overBanner');
+  const overStats = document.getElementById('overStats');
+
+  const W = canvas.width, H = canvas.height;
+  const HIGH_KEY = 'arcade-spaceshooter-highscore';
+  const FIRE_INTERVAL = 270;
+  const PLAYER_SPEED = 420;
+  const BULLET_SPEED = 640;
+
+  const ENEMY_TYPES = [
+    { key: 'red', r: 11, speedMin: 130, speedMax: 190, points: 10, color: '#ff4d5e', weight: 5 },
+    { key: 'purple', r: 16, speedMin: 80, speedMax: 115, points: 20, color: '#7b2ff7', weight: 3 },
+    { key: 'teal', r: 22, speedMin: 48, speedMax: 68, points: 30, color: '#00e5ff', weight: 2 }
+  ];
+  const TYPE_TOTAL_WEIGHT = ENEMY_TYPES.reduce((s, t) => s + t.weight, 0);
+
+  let player, bullets, enemies, stars, score, lives, highScore;
+  let running, lastFire, lastSpawn, spawnInterval, startTime, keys, pointerTargetX, raf;
+
+  function loadHigh() {
+    return parseInt(localStorage.getItem(HIGH_KEY) || '0', 10);
+  }
+
+  function saveHighIfBetter() {
+    const prev = loadHigh();
+    if (score > prev) {
+      localStorage.setItem(HIGH_KEY, String(score));
+      return true;
+    }
+    return false;
+  }
+
+  function makeStars() {
+    const arr = [];
+    for (let i = 0; i < 80; i++) {
+      arr.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: 0.6 + Math.random() * 1.6,
+        speed: 20 + Math.random() * 60
+      });
+    }
+    return arr;
+  }
+
+  function pickType() {
+    let roll = Math.random() * TYPE_TOTAL_WEIGHT;
+    for (const t of ENEMY_TYPES) {
+      if (roll < t.weight) return t;
+      roll -= t.weight;
+    }
+    return ENEMY_TYPES[0];
+  }
+
+  function difficultyElapsed() {
+    return Date.now() - startTime;
+  }
+
+  function currentSpawnInterval() {
+    const elapsed = difficultyElapsed();
+    return Math.max(320, 1150 - elapsed * 0.006);
+  }
+
+  function currentSpeedMult() {
+    const elapsed = difficultyElapsed();
+    return 1 + Math.min(1, elapsed / 70000) * 1.1;
+  }
+
+  function spawnEnemy() {
+    const type = pickType();
+    const r = type.r;
+    const x = r + Math.random() * (W - 2 * r);
+    const isSine = Math.random() < 0.32;
+    enemies.push({
+      x, baseX: x,
+      y: -r - 10,
+      r,
+      color: type.color,
+      points: type.points,
+      vy: (type.speedMin + Math.random() * (type.speedMax - type.speedMin)) * currentSpeedMult(),
+      sine: isSine,
+      sineAmp: 24 + Math.random() * 44,
+      sineFreq: 0.0012 + Math.random() * 0.0018,
+      spawnTime: Date.now()
+    });
+  }
+
+  function resetState() {
+    player = { x: W / 2, y: H - 46, w: 30, h: 26 };
+    bullets = [];
+    enemies = [];
+    stars = makeStars();
+    score = 0;
+    lives = 3;
+    lastFire = 0;
+    lastSpawn = 0;
+    spawnInterval = 1150;
+    startTime = Date.now();
+    pointerTargetX = player.x;
+    keys = { left: false, right: false };
+    scoreEl.textContent = score;
+    livesEl.textContent = lives;
+  }
+
+  function startGame() {
+    highScore = loadHigh();
+    highscoreEl.textContent = highScore;
+    overBanner.classList.remove('show');
+    resetState();
+    running = true;
+  }
+
+  function loseLife(x, y) {
+    lives--;
+    livesEl.textContent = lives;
+    Arcade.sfxMiss();
+    if (x !== undefined) Arcade.spawnBurst(x, y);
+    if (lives <= 0) gameOver();
+  }
+
+  function gameOver() {
+    running = false;
+    const isNewBest = saveHighIfBetter();
+    highscoreEl.textContent = loadHigh();
+    overStats.textContent = `Score: ${score}${isNewBest ? ' · new high score! 🏆' : ''}`;
+    overBanner.classList.add('show');
+    Arcade.sfxGameOver();
+    if (isNewBest) Arcade.spawnConfetti();
+  }
+
+  function screenPoint(x, y) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: r.left + x * (r.width / W),
+      y: r.top + y * (r.height / H)
+    };
+  }
+
+  function update(ts) {
+    if (!running) {
+      draw();
+      raf = requestAnimationFrame(update);
+      return;
+    }
+
+    const dt = Math.min(ts - (update.last || ts), 48);
+    update.last = ts;
+    const now = Date.now();
+
+    if (keys.left) player.x -= PLAYER_SPEED * dt / 1000;
+    if (keys.right) player.x += PLAYER_SPEED * dt / 1000;
+    if (!keys.left && !keys.right) {
+      const diff = pointerTargetX - player.x;
+      player.x += diff * Math.min(1, dt / 90);
+    }
+    player.x = Math.max(player.w / 2, Math.min(W - player.w / 2, player.x));
+
+    if (now - lastFire >= FIRE_INTERVAL) {
+      lastFire = now;
+      bullets.push({ x: player.x, y: player.y - player.h / 2 - 4, r: 4 });
+    }
+
+    bullets.forEach(b => { b.y -= BULLET_SPEED * dt / 1000; });
+    bullets = bullets.filter(b => b.y + b.r > 0);
+
+    if (now - lastSpawn >= spawnInterval) {
+      lastSpawn = now;
+      spawnInterval = currentSpawnInterval();
+      spawnEnemy();
+    }
+
+    const speedMult = currentSpeedMult();
+    enemies.forEach(e => {
+      e.y += e.vy * dt / 1000;
+      if (e.sine) {
+        e.x = e.baseX + Math.sin((now - e.spawnTime) * e.sineFreq) * e.sineAmp;
+        e.x = Math.max(e.r, Math.min(W - e.r, e.x));
+      }
+    });
+
+    outer:
+    for (let bi = bullets.length - 1; bi >= 0; bi--) {
+      const b = bullets[bi];
+      for (let ei = enemies.length - 1; ei >= 0; ei--) {
+        const e = enemies[ei];
+        const dx = b.x - e.x, dy = b.y - e.y;
+        if (dx * dx + dy * dy < (e.r + b.r) * (e.r + b.r)) {
+          score += e.points;
+          scoreEl.textContent = score;
+          Arcade.sfxHit();
+          const p = screenPoint(e.x, e.y);
+          Arcade.spawnBurst(p.x, p.y);
+          enemies.splice(ei, 1);
+          bullets.splice(bi, 1);
+          continue outer;
+        }
+      }
+    }
+
+    for (let ei = enemies.length - 1; ei >= 0; ei--) {
+      const e = enemies[ei];
+      const dx = e.x - player.x, dy = e.y - player.y;
+      const hitDist = e.r + Math.max(player.w, player.h) / 2.4;
+      if (dy > -e.r && dx * dx + dy * dy < hitDist * hitDist) {
+        const p = screenPoint(e.x, e.y);
+        enemies.splice(ei, 1);
+        loseLife(p.x, p.y);
+        continue;
+      }
+      if (e.y - e.r > H) {
+        enemies.splice(ei, 1);
+        loseLife();
+      }
+    }
+
+    stars.forEach(s => {
+      s.y += s.speed * dt / 1000;
+      if (s.y > H) { s.y = 0; s.x = Math.random() * W; }
+    });
+
+    draw();
+    raf = requestAnimationFrame(update);
+  }
+
+  function drawShip() {
+    const x = player.x, y = player.y, w = player.w, h = player.h;
+    ctx.save();
+    ctx.shadowColor = '#00e5ff';
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = '#e7fbff';
+    ctx.beginPath();
+    ctx.moveTo(x, y - h / 2);
+    ctx.lineTo(x + w / 2, y + h / 2);
+    ctx.lineTo(x, y + h / 4);
+    ctx.lineTo(x - w / 2, y + h / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(123,47,247,0.85)';
+    ctx.shadowColor = '#7b2ff7';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(x, y + h / 2 + 2 + Math.random() * 3, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    stars.forEach(s => {
+      ctx.globalAlpha = 0.4 + Math.random() * 0.3;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    bullets.forEach(b => {
+      ctx.save();
+      ctx.shadowColor = '#ffd93d';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = '#ffd93d';
+      ctx.beginPath();
+      ctx.roundRect(b.x - b.r / 2, b.y - b.r * 1.6, b.r, b.r * 3.2, 3);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    enemies.forEach(e => {
+      ctx.save();
+      ctx.shadowColor = e.color;
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = e.color;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    if (running) drawShip();
+  }
+
+  function pointerX(clientX) {
+    const r = canvas.getBoundingClientRect();
+    return (clientX - r.left) * (W / r.width);
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    pointerTargetX = pointerX(e.clientX);
+  });
+
+  canvas.addEventListener('touchmove', (e) => {
+    const t = e.touches[0];
+    pointerTargetX = pointerX(t.clientX);
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    pointerTargetX = pointerX(t.clientX);
+  }, { passive: true });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+  });
+
+  restartBtn.addEventListener('click', () => { startGame(); });
+  playAgainBtn.addEventListener('click', () => { startGame(); });
+  Arcade.setupMuteButton(document.getElementById('mute'));
+
+  startGame();
+  raf = requestAnimationFrame(update);
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reflex Rush · Charlotte Arcade</title>
+<link rel="stylesheet" href="../shared.css" />
+<style>
+  .box {
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 4 / 3;
+    border-radius: 24px;
+    box-shadow: 0 16px 40px rgba(27, 27, 51, 0.18);
+    background-color: #1b1b2e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+  }
+
+  .box-text {
+    color: #fff;
+    font-size: clamp(1.3rem, 6vw, 1.9rem);
+    font-weight: 700;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  .box-sub {
+    color: rgba(255,255,255,0.75);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-top: 8px;
+  }
+
+  .times {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin: 18px 0 0;
+    max-width: 420px;
+  }
+
+  .time-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink);
+    animation: pop 0.3s cubic-bezier(.34,1.56,.64,1);
+  }
+
+  @keyframes pop {
+    from { transform: scale(0.6); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .banner .best-tag {
+    display: inline-block;
+    margin-top: 8px;
+    font-weight: 700;
+    color: var(--win);
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+<canvas id="fx"></canvas>
+
+<div class="topbar">
+  <a class="back btn icon" href="../index.html">←</a>
+</div>
+
+<h1>⚡ Reflex Rush</h1>
+<p class="subtitle">Wait for green, then click as fast as you can. 5 rounds, lowest average wins.</p>
+
+<div class="panel">
+  <div class="stat">
+    <div class="label">Round</div>
+    <div class="value" id="round">-</div>
+  </div>
+  <div class="stat">
+    <div class="label">Last Avg</div>
+    <div class="value" id="lastAvg">-</div>
+  </div>
+  <div class="stat">
+    <div class="label">Best Avg</div>
+    <div class="value" id="bestAvg">-</div>
+  </div>
+  <div class="stat">
+    <div class="label">False Starts</div>
+    <div class="value" id="falseStarts">0</div>
+  </div>
+  <button class="primary" id="startBtn">Start</button>
+  <button class="icon" id="mute" title="Toggle sound">🔊</button>
+</div>
+
+<div class="box" id="box">
+  <div>
+    <div class="box-text" id="boxText">Click Start when you're ready</div>
+    <div class="box-sub" id="boxSub"></div>
+  </div>
+</div>
+
+<div class="times" id="times"></div>
+
+<p class="status" id="status"></p>
+
+<div class="banner" id="banner">
+  <h2 id="bannerTitle">Run complete!</h2>
+  <p id="bannerTimes"></p>
+  <p id="bannerAvg"></p>
+  <span class="best-tag" id="bannerBest" style="display:none;">🏆 New personal best!</span>
+</div>
+
+<footer>Your best average reaction time is saved locally in this browser.</footer>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+  const box = document.getElementById('box');
+  const boxText = document.getElementById('boxText');
+  const boxSub = document.getElementById('boxSub');
+  const roundEl = document.getElementById('round');
+  const lastAvgEl = document.getElementById('lastAvg');
+  const bestAvgEl = document.getElementById('bestAvg');
+  const falseStartsEl = document.getElementById('falseStarts');
+  const startBtn = document.getElementById('startBtn');
+  const timesEl = document.getElementById('times');
+  const statusEl = document.getElementById('status');
+  const banner = document.getElementById('banner');
+  const bannerTimes = document.getElementById('bannerTimes');
+  const bannerAvg = document.getElementById('bannerAvg');
+  const bannerBest = document.getElementById('bannerBest');
+
+  const BEST_KEY = 'arcade-reflex-best';
+  const TOTAL_ROUNDS = 5;
+  const COLORS = { idle: '#1b1b2e', waiting: '#b5342f', go: '#1fae5c', early: '#3a3a55' };
+
+  let state = 'idle'; // idle | waiting | go
+  let waitTimer = null;
+  let stateStartTime = 0;
+  let round = 0;
+  let roundTimes = [];
+  let falseStarts = 0;
+  let best = loadBest();
+
+  function loadBest() {
+    const v = parseInt(localStorage.getItem(BEST_KEY), 10);
+    return Number.isFinite(v) ? v : null;
+  }
+
+  function saveBest(v) {
+    best = v;
+    localStorage.setItem(BEST_KEY, String(v));
+  }
+
+  function refreshStats() {
+    roundEl.textContent = round > 0 && round <= TOTAL_ROUNDS ? `${round} / ${TOTAL_ROUNDS}` : '-';
+    bestAvgEl.textContent = best !== null ? `${best} ms` : '-';
+    falseStartsEl.textContent = falseStarts;
+  }
+
+  function setBox(colorKey, text, sub) {
+    box.style.backgroundColor = COLORS[colorKey];
+    boxText.textContent = text;
+    boxSub.textContent = sub || '';
+  }
+
+  function renderTimes() {
+    timesEl.innerHTML = '';
+    roundTimes.forEach((t, i) => {
+      const chip = document.createElement('div');
+      chip.className = 'time-chip';
+      chip.textContent = `R${i + 1}: ${t} ms`;
+      timesEl.appendChild(chip);
+    });
+  }
+
+  function boxCenter() {
+    const r = box.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  function startRound() {
+    if (waitTimer) { clearTimeout(waitTimer); waitTimer = null; }
+    state = 'waiting';
+    setBox('waiting', 'Wait for green...', '');
+    statusEl.textContent = `Round ${round} of ${TOTAL_ROUNDS} — don't click yet.`;
+    const delay = 1500 + Math.random() * 2500;
+    waitTimer = setTimeout(goLive, delay);
+  }
+
+  function goLive() {
+    state = 'go';
+    stateStartTime = performance.now();
+    setBox('go', 'CLICK NOW!', '');
+  }
+
+  function falseStart() {
+    if (waitTimer) { clearTimeout(waitTimer); waitTimer = null; }
+    falseStarts++;
+    refreshStats();
+    Arcade.sfxMiss();
+    setBox('early', 'Too soon! Try again', '');
+    state = 'idle';
+    setTimeout(() => {
+      if (round > 0 && round <= TOTAL_ROUNDS) startRound();
+    }, 700);
+  }
+
+  function registerHit() {
+    const ms = Math.round(performance.now() - stateStartTime);
+    roundTimes.push(ms);
+    renderTimes();
+    Arcade.sfxHit();
+    const c = boxCenter();
+    Arcade.spawnBurst(c.x, c.y);
+    setBox('go', `${ms} ms`, 'Nice reflexes!');
+    state = 'idle';
+    if (waitTimer) { clearTimeout(waitTimer); waitTimer = null; }
+
+    setTimeout(() => {
+      if (round >= TOTAL_ROUNDS) {
+        finishRun();
+      } else {
+        round++;
+        refreshStats();
+        startRound();
+      }
+    }, 600);
+  }
+
+  function finishRun() {
+    const avg = Math.round(roundTimes.reduce((a, b) => a + b, 0) / roundTimes.length);
+    lastAvgEl.textContent = `${avg} ms`;
+    const isNewBest = best === null || avg < best;
+    if (isNewBest) saveBest(avg);
+    refreshStats();
+
+    round = 0;
+    state = 'idle';
+    setBox('idle', 'Click Start to play again', '');
+    statusEl.textContent = '';
+
+    bannerTimes.textContent = roundTimes.map((t, i) => `R${i + 1}: ${t}ms`).join('  ·  ');
+    bannerAvg.textContent = `Average: ${avg} ms`;
+    bannerBest.style.display = isNewBest ? 'inline-block' : 'none';
+    banner.classList.add('show');
+
+    if (isNewBest) {
+      Arcade.spawnConfetti();
+    }
+    Arcade.sfxWin();
+
+    startBtn.textContent = 'Play Again';
+  }
+
+  function onBoxActivate() {
+    if (state === 'waiting') {
+      falseStart();
+    } else if (state === 'go') {
+      registerHit();
+    }
+  }
+
+  function beginRun() {
+    if (waitTimer) { clearTimeout(waitTimer); waitTimer = null; }
+    banner.classList.remove('show');
+    roundTimes = [];
+    falseStarts = 0;
+    round = 1;
+    renderTimes();
+    refreshStats();
+    startBtn.textContent = 'Restart';
+    startRound();
+  }
+
+  box.addEventListener('click', onBoxActivate);
+  box.addEventListener('touchstart', (e) => { e.preventDefault(); onBoxActivate(); }, { passive: false });
+  startBtn.addEventListener('click', beginRun);
+
+  Arcade.setupMuteButton(document.getElementById('mute'));
+
+  refreshStats();
+})();
+</script>
+
+</body>
+</html>

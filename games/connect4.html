@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Connect Four · Charlotte Arcade</title>
+<link rel="stylesheet" href="../shared.css" />
+<style>
+  .board-wrap {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .col-hotspots {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .col-hotspot {
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.65);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    user-select: none;
+  }
+
+  .col-hotspot:hover {
+    background: var(--surface);
+    box-shadow: 0 4px 14px rgba(76, 111, 255, 0.25);
+    transform: translateY(-2px);
+    color: var(--brand);
+  }
+
+  .col-hotspots.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .board {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 7 / 6;
+    background: var(--screen-bg);
+    border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(27, 27, 51, 0.18);
+    padding: 14px;
+  }
+
+  .grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
+
+  .grid.disabled {
+    pointer-events: none;
+  }
+
+  .cell {
+    border-radius: 50%;
+    background: rgba(0,0,0,0.35);
+    box-shadow: inset 0 4px 8px rgba(0,0,0,0.55), inset 0 -2px 4px rgba(255,255,255,0.04);
+    cursor: pointer;
+  }
+
+  .discs-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .disc {
+    position: absolute;
+    border-radius: 50%;
+    box-shadow: inset 0 -6px 10px rgba(0,0,0,0.25), inset 0 5px 6px rgba(255,255,255,0.3), 0 4px 10px rgba(0,0,0,0.35);
+  }
+
+  .disc.red {
+    background: radial-gradient(circle at 35% 30%, #ff9aa8, #ff3d52 55%, #c21f36);
+  }
+
+  .disc.yellow {
+    background: radial-gradient(circle at 35% 30%, #fff3a3, #ffd400 55%, #d4a800);
+  }
+
+  .disc.red.win {
+    box-shadow: 0 0 0 4px #fff, 0 0 26px 10px rgba(255,61,82,0.85);
+    animation: discGlow 0.9s ease-in-out infinite alternate;
+  }
+
+  .disc.yellow.win {
+    box-shadow: 0 0 0 4px #fff, 0 0 26px 10px rgba(255,212,0,0.85);
+    animation: discGlow 0.9s ease-in-out infinite alternate;
+  }
+
+  @keyframes discGlow {
+    from { filter: brightness(1); transform: scale(1); }
+    to { filter: brightness(1.3); transform: scale(1.06); }
+  }
+
+  .status {
+    margin-top: 16px;
+    color: var(--muted);
+    min-height: 1.2em;
+    text-align: center;
+  }
+
+  .status.thinking::after {
+    content: "…";
+    animation: dots 1s steps(4) infinite;
+  }
+
+  @keyframes dots {
+    0% { content: "."; }
+    33% { content: ".."; }
+    66% { content: "..."; }
+    100% { content: "."; }
+  }
+
+  .banner button {
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+<canvas id="fx"></canvas>
+
+<div class="topbar">
+  <a class="back btn icon" href="../index.html">←</a>
+</div>
+
+<h1>🔴 Connect Four</h1>
+<p class="subtitle">You're red. Drop discs to connect four before the AI does.</p>
+
+<div class="panel">
+  <div class="stat">
+    <div class="label">Wins</div>
+    <div class="value" id="wins">0</div>
+  </div>
+  <div class="stat">
+    <div class="label">Losses</div>
+    <div class="value" id="losses">0</div>
+  </div>
+  <div class="stat">
+    <div class="label">Draws</div>
+    <div class="value" id="draws">0</div>
+  </div>
+  <button class="primary" id="newGame">New Game</button>
+  <button class="icon" id="mute" title="Toggle sound">🔊</button>
+</div>
+
+<div class="board-wrap">
+  <div class="col-hotspots" id="hotspots"></div>
+  <div class="board">
+    <div class="grid" id="grid"></div>
+    <div class="discs-layer" id="discsLayer"></div>
+  </div>
+</div>
+
+<p class="status" id="status">Your move.</p>
+
+<div class="banner" id="banner">
+  <h2 id="bannerTitle"></h2>
+  <p id="bannerMsg"></p>
+  <button class="primary" id="playAgain">Play Again</button>
+</div>
+
+<footer>Your win/loss/draw record is saved locally in this browser.</footer>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+  const ROWS = 6, COLS = 7, DEPTH = 5;
+  const HUMAN = 'r', AI = 'y';
+  const RECORD_KEY = 'arcade-connect4-record';
+
+  const gridEl = document.getElementById('grid');
+  const hotspotsEl = document.getElementById('hotspots');
+  const discsLayer = document.getElementById('discsLayer');
+  const statusEl = document.getElementById('status');
+  const bannerEl = document.getElementById('banner');
+  const bannerTitle = document.getElementById('bannerTitle');
+  const bannerMsg = document.getElementById('bannerMsg');
+  const winsEl = document.getElementById('wins');
+  const lossesEl = document.getElementById('losses');
+  const drawsEl = document.getElementById('draws');
+  const newGameBtn = document.getElementById('newGame');
+  const playAgainBtn = document.getElementById('playAgain');
+
+  let board, cellEls, discEls, gameOver, busy, currentTurn, record;
+
+  function loadRecord() {
+    try {
+      return JSON.parse(localStorage.getItem(RECORD_KEY)) || { w: 0, l: 0, d: 0 };
+    } catch (e) {
+      return { w: 0, l: 0, d: 0 };
+    }
+  }
+
+  function saveRecord() {
+    localStorage.setItem(RECORD_KEY, JSON.stringify(record));
+  }
+
+  function refreshRecordUI() {
+    winsEl.textContent = record.w;
+    lossesEl.textContent = record.l;
+    drawsEl.textContent = record.d;
+  }
+
+  function createBoard() {
+    return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+  }
+
+  function cloneBoard(b) {
+    return b.map(row => row.slice());
+  }
+
+  function isValidCol(b, col) {
+    return b[0][col] === null;
+  }
+
+  function getValidCols(b) {
+    const cols = [];
+    for (let c = 0; c < COLS; c++) if (isValidCol(b, c)) cols.push(c);
+    return cols;
+  }
+
+  function getOpenRow(b, col) {
+    for (let r = ROWS - 1; r >= 0; r--) if (b[r][col] === null) return r;
+    return -1;
+  }
+
+  function isBoardFull(b) {
+    return b[0].every(cell => cell !== null);
+  }
+
+  function winningLine(b, piece) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c <= COLS - 4; c++) {
+        if (b[r][c] === piece && b[r][c+1] === piece && b[r][c+2] === piece && b[r][c+3] === piece) {
+          return [[r,c],[r,c+1],[r,c+2],[r,c+3]];
+        }
+      }
+    }
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 0; r <= ROWS - 4; r++) {
+        if (b[r][c] === piece && b[r+1][c] === piece && b[r+2][c] === piece && b[r+3][c] === piece) {
+          return [[r,c],[r+1,c],[r+2,c],[r+3,c]];
+        }
+      }
+    }
+    for (let r = 0; r <= ROWS - 4; r++) {
+      for (let c = 0; c <= COLS - 4; c++) {
+        if (b[r][c] === piece && b[r+1][c+1] === piece && b[r+2][c+2] === piece && b[r+3][c+3] === piece) {
+          return [[r,c],[r+1,c+1],[r+2,c+2],[r+3,c+3]];
+        }
+      }
+    }
+    for (let r = 3; r < ROWS; r++) {
+      for (let c = 0; c <= COLS - 4; c++) {
+        if (b[r][c] === piece && b[r-1][c+1] === piece && b[r-2][c+2] === piece && b[r-3][c+3] === piece) {
+          return [[r,c],[r-1,c+1],[r-2,c+2],[r-3,c+3]];
+        }
+      }
+    }
+    return null;
+  }
+
+  function scoreWindow(win, piece) {
+    const opp = piece === HUMAN ? AI : HUMAN;
+    const countPiece = win.filter(c => c === piece).length;
+    const countEmpty = win.filter(c => c === null).length;
+    const countOpp = win.filter(c => c === opp).length;
+    let score = 0;
+    if (countPiece === 4) score += 100000;
+    else if (countPiece === 3 && countEmpty === 1) score += 100;
+    else if (countPiece === 2 && countEmpty === 2) score += 10;
+    if (countOpp === 3 && countEmpty === 1) score -= 120;
+    else if (countOpp === 2 && countEmpty === 2) score -= 8;
+    return score;
+  }
+
+  function evaluateBoard(b, piece) {
+    let score = 0;
+    const centerCol = Math.floor(COLS / 2);
+    for (let r = 0; r < ROWS; r++) if (b[r][centerCol] === piece) score += 6;
+
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c <= COLS - 4; c++) {
+        score += scoreWindow([b[r][c], b[r][c+1], b[r][c+2], b[r][c+3]], piece);
+      }
+    }
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 0; r <= ROWS - 4; r++) {
+        score += scoreWindow([b[r][c], b[r+1][c], b[r+2][c], b[r+3][c]], piece);
+      }
+    }
+    for (let r = 0; r <= ROWS - 4; r++) {
+      for (let c = 0; c <= COLS - 4; c++) {
+        score += scoreWindow([b[r][c], b[r+1][c+1], b[r+2][c+2], b[r+3][c+3]], piece);
+      }
+    }
+    for (let r = 3; r < ROWS; r++) {
+      for (let c = 0; c <= COLS - 4; c++) {
+        score += scoreWindow([b[r][c], b[r-1][c+1], b[r-2][c+2], b[r-3][c+3]], piece);
+      }
+    }
+    return score;
+  }
+
+  function orderColumns(cols) {
+    const center = Math.floor(COLS / 2);
+    return [...cols].sort((a, b) => Math.abs(a - center) - Math.abs(b - center));
+  }
+
+  function minimax(b, depth, alpha, beta, maximizing) {
+    const validCols = getValidCols(b);
+    const winA = winningLine(b, AI);
+    const winH = winningLine(b, HUMAN);
+    const terminal = winA || winH || validCols.length === 0;
+
+    if (terminal) {
+      if (winA) return { score: 10000000 + depth };
+      if (winH) return { score: -10000000 - depth };
+      return { score: 0 };
+    }
+    if (depth === 0) {
+      return { score: evaluateBoard(b, AI) };
+    }
+
+    const order = orderColumns(validCols);
+    if (maximizing) {
+      let value = -Infinity;
+      let bestCol = order[0];
+      for (const col of order) {
+        const row = getOpenRow(b, col);
+        const b2 = cloneBoard(b);
+        b2[row][col] = AI;
+        const result = minimax(b2, depth - 1, alpha, beta, false);
+        if (result.score > value) { value = result.score; bestCol = col; }
+        alpha = Math.max(alpha, value);
+        if (alpha >= beta) break;
+      }
+      return { score: value, col: bestCol };
+    } else {
+      let value = Infinity;
+      let bestCol = order[0];
+      for (const col of order) {
+        const row = getOpenRow(b, col);
+        const b2 = cloneBoard(b);
+        b2[row][col] = HUMAN;
+        const result = minimax(b2, depth - 1, alpha, beta, true);
+        if (result.score < value) { value = result.score; bestCol = col; }
+        beta = Math.min(beta, value);
+        if (alpha >= beta) break;
+      }
+      return { score: value, col: bestCol };
+    }
+  }
+
+  function buildGrid() {
+    gridEl.innerHTML = '';
+    cellEls = [];
+    for (let r = 0; r < ROWS; r++) {
+      const rowArr = [];
+      for (let c = 0; c < COLS; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.addEventListener('click', () => attemptDrop(c));
+        gridEl.appendChild(cell);
+        rowArr.push(cell);
+      }
+      cellEls.push(rowArr);
+    }
+  }
+
+  function buildHotspots() {
+    hotspotsEl.innerHTML = '';
+    for (let c = 0; c < COLS; c++) {
+      const hs = document.createElement('div');
+      hs.className = 'col-hotspot';
+      hs.textContent = '▼';
+      hs.addEventListener('click', () => attemptDrop(c));
+      hotspotsEl.appendChild(hs);
+    }
+  }
+
+  function positionDisc(disc, row, col, startAbove) {
+    const cellRect = cellEls[row][col].getBoundingClientRect();
+    const layerRect = discsLayer.getBoundingClientRect();
+    const size = cellRect.width;
+    disc.style.width = size + 'px';
+    disc.style.height = size + 'px';
+    disc.style.left = (cellRect.left - layerRect.left) + 'px';
+    if (startAbove) {
+      const topRect = cellEls[0][col].getBoundingClientRect();
+      disc.style.top = (topRect.top - layerRect.top - size * 1.2 - 12) + 'px';
+    } else {
+      disc.style.top = (cellRect.top - layerRect.top) + 'px';
+    }
+  }
+
+  function animateDrop(row, col, piece, onComplete) {
+    const disc = document.createElement('div');
+    disc.className = 'disc ' + (piece === HUMAN ? 'red' : 'yellow');
+    discsLayer.appendChild(disc);
+    discEls[row][col] = disc;
+
+    positionDisc(disc, row, col, true);
+    disc.offsetHeight;
+    disc.style.transition = 'top 0.55s cubic-bezier(.47,1.6,.6,1)';
+    requestAnimationFrame(() => positionDisc(disc, row, col, false));
+
+    let done = false;
+    disc.addEventListener('transitionend', function handler(e) {
+      if (e.propertyName !== 'top' || done) return;
+      done = true;
+      disc.removeEventListener('transitionend', handler);
+      onComplete();
+    });
+  }
+
+  function updateInteractivity() {
+    const enabled = !gameOver && !busy && currentTurn === 'human';
+    hotspotsEl.classList.toggle('disabled', !enabled);
+    gridEl.classList.toggle('disabled', !enabled);
+  }
+
+  function cellCenter(row, col) {
+    const r = cellEls[row][col].getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  function endGame(type, line) {
+    gameOver = true;
+    busy = false;
+    statusEl.classList.remove('thinking');
+
+    if (line) {
+      line.forEach(([r, c]) => discEls[r][c].classList.add('win'));
+      const a = cellCenter(line[0][0], line[0][1]);
+      const b = cellCenter(line[3][0], line[3][1]);
+      Arcade.spawnBurst((a.x + b.x) / 2, (a.y + b.y) / 2);
+    }
+
+    bannerEl.classList.remove('lose');
+    if (type === 'win') {
+      statusEl.textContent = 'You win! 🎉';
+      record.w++;
+      Arcade.sfxWin();
+      Arcade.spawnConfetti();
+      bannerTitle.textContent = 'You Win! 🔴';
+      bannerMsg.textContent = 'Four in a row — nicely dropped.';
+    } else if (type === 'lose') {
+      statusEl.textContent = 'AI wins.';
+      record.l++;
+      Arcade.sfxGameOver();
+      bannerEl.classList.add('lose');
+      bannerTitle.textContent = 'AI Wins';
+      bannerMsg.textContent = 'The AI connected four first. Try again!';
+    } else {
+      statusEl.textContent = "It's a draw.";
+      record.d++;
+      Arcade.sfxMiss();
+      bannerTitle.textContent = "It's a Draw";
+      bannerMsg.textContent = 'The board filled up with no winner.';
+    }
+
+    saveRecord();
+    refreshRecordUI();
+    bannerEl.classList.add('show');
+    updateInteractivity();
+  }
+
+  function aiTurn() {
+    const result = minimax(board, DEPTH, -Infinity, Infinity, true);
+    const valid = getValidCols(board);
+    let col = result.col;
+    if (col === undefined || !isValidCol(board, col)) {
+      col = valid[Math.floor(Math.random() * valid.length)];
+    }
+    const row = getOpenRow(board, col);
+    board[row][col] = AI;
+    animateDrop(row, col, AI, () => {
+      Arcade.sfxFlip();
+      afterMove(row, col, AI);
+    });
+  }
+
+  function afterMove(row, col, piece) {
+    const line = winningLine(board, piece);
+    if (line) {
+      endGame(piece === HUMAN ? 'win' : 'lose', line);
+      return;
+    }
+    if (isBoardFull(board)) {
+      endGame('draw');
+      return;
+    }
+    if (piece === HUMAN) {
+      currentTurn = 'ai';
+      busy = false;
+      updateInteractivity();
+      statusEl.textContent = 'AI thinking';
+      statusEl.classList.add('thinking');
+      setTimeout(() => {
+        if (gameOver) return;
+        busy = true;
+        aiTurn();
+      }, 450 + Math.random() * 150);
+    } else {
+      currentTurn = 'human';
+      busy = false;
+      statusEl.classList.remove('thinking');
+      statusEl.textContent = 'Your move.';
+      updateInteractivity();
+    }
+  }
+
+  function attemptDrop(col) {
+    if (gameOver || busy || currentTurn !== 'human') return;
+    if (!isValidCol(board, col)) return;
+    busy = true;
+    updateInteractivity();
+    const row = getOpenRow(board, col);
+    board[row][col] = HUMAN;
+    animateDrop(row, col, HUMAN, () => {
+      Arcade.sfxFlip();
+      afterMove(row, col, HUMAN);
+    });
+  }
+
+  function repositionAll() {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const d = discEls[r][c];
+        if (d) {
+          d.style.transition = 'none';
+          positionDisc(d, r, c, false);
+        }
+      }
+    }
+  }
+
+  function newGame() {
+    board = createBoard();
+    discEls = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+    discsLayer.innerHTML = '';
+    gameOver = false;
+    busy = false;
+    currentTurn = 'human';
+    statusEl.classList.remove('thinking');
+    statusEl.textContent = 'Your move.';
+    bannerEl.classList.remove('show', 'lose');
+    updateInteractivity();
+  }
+
+  record = loadRecord();
+  refreshRecordUI();
+  buildGrid();
+  buildHotspots();
+  newGame();
+
+  newGameBtn.addEventListener('click', newGame);
+  playAgainBtn.addEventListener('click', newGame);
+  window.addEventListener('resize', repositionAll);
+  Arcade.setupMuteButton(document.getElementById('mute'));
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Charlotte Arcade</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .nav-inner .btn.icon {
+    margin-left: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+<canvas id="fx"></canvas>
+
+<nav class="navbar">
+  <div class="nav-inner">
+    <a class="logo" href="index.html">
+      <span class="logo-mark">🕹️</span>
+      <span>Charlotte Arcade</span>
+    </a>
+    <div class="search-box">
+      <input type="text" id="search" placeholder="Search games…" autocomplete="off" />
+    </div>
+    <button class="icon" id="mute" title="Toggle sound">🔊</button>
+  </div>
+</nav>
+
+<div class="hub">
+  <div class="hub-hero">
+    <h1>Play something fun</h1>
+    <p class="subtitle">14 free games. No installs, no accounts — just click and play.</p>
+  </div>
+
+  <div class="game-grid" id="gameGrid">
+    <a class="game-card" style="--card-color:#FF6B6B; animation-delay:0.02s" href="games/memory.html" data-title="memory match">
+      <div class="thumb"><div class="emoji">🧠</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>Memory Match</h3><div class="stat-chip" data-stat="memory">Loading…</div></div>
+    </a>
+
+    <a class="game-card" style="--card-color:#51CF66; animation-delay:0.05s" href="games/snake.html" data-title="snake">
+      <div class="thumb"><div class="emoji">🐍</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>Snake</h3><div class="stat-chip" data-stat="snake">Loading…</div></div>
+    </a>
+
+    <a class="game-card" style="--card-color:#339AF0; animation-delay:0.08s" href="games/breakout.html" data-title="breakout">
+      <div class="thumb"><div class="emoji">🧱</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>Breakout</h3><div class="stat-chip" data-stat="breakout">Loading…</div></div>
+    </a>
+
+    <a class="game-card" style="--card-color:#9775FA; animation-delay:0.11s" href="games/2048.html" data-title="2048">
+      <div class="thumb"><div class="emoji">🔢</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>2048</h3><div class="stat-chip" data-stat="2048">Loading…</div></div>
+    </a>
+
+    <a class="game-card" style="--card-color:#FFA94D; animation-delay:0.14s" href="games/tictactoe.html" data-title="tic tac toe">
+      <div class="thumb"><div class="emoji">⭕</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>Tic-Tac-Toe</h3><div class="stat-chip" data-stat="ttt">Loading…</div></div>
+    </a>
+
+    <a class="game-card" style="--card-color:#FF8787; animation-delay:0.17s" href="games/whackamole.html" data-title="whack a mole">
+      <div class="thumb"><div class="emoji">🔨</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>Whack-a-Mole</h3><div class="stat-chip" data-stat="whack">Loading…</div></div>
+    </a>
+
+    <a class="game-card" style="--card-color:#20C997; animation-delay:0.2s" href="games/flappy.html" data-title="flappy bird flap">
+      <div class="thumb"><div class="emoji">🐤</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>Flappy Bird</h3><div class="stat-chip" data-stat="flappy">Loading…</div></div>
+    </a>
+
+    <a class="game-card" style="--card-color:#845EF7; animation-delay:0.23s" href="games/spaceshooter.html" data-title="space shooter">
+      <div class="thumb"><div class="emoji">🚀</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>Space Shooter</h3><div class="stat-chip" data-stat="spaceshooter">Loading…</div></div>
+    </a>
+
+    <a class="game-card" style="--card-color:#FAB005; animation-delay:0.26s" href="games/pong.html" data-title="pong">
+      <div class="thumb"><div class="emoji">🏓</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>Pong</h3><div class="stat-chip" data-stat="pong">Loading…</div></div>
+    </a>
+
+    <a class="game-card" style="--card-color:#FF6B9D; animation-delay:0.29s" href="games/tetris.html" data-title="tetris blocks">
+      <div class="thumb"><div class="emoji">🧩</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>Tetris</h3><div class="stat-chip" data-stat="tetris">Loading…</div></div>
+    </a>
+
+    <a class="game-card" style="--card-color:#22B8CF; animation-delay:0.32s" href="games/simon.html" data-title="simon says">
+      <div class="thumb"><div class="emoji">🎵</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>Simon Says</h3><div class="stat-chip" data-stat="simon">Loading…</div></div>
+    </a>
+
+    <a class="game-card" style="--card-color:#FD7E14; animation-delay:0.35s" href="games/connect4.html" data-title="connect four">
+      <div class="thumb"><div class="emoji">🔴</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>Connect Four</h3><div class="stat-chip" data-stat="connect4">Loading…</div></div>
+    </a>
+
+    <a class="game-card" style="--card-color:#495057; animation-delay:0.38s" href="games/minesweeper.html" data-title="minesweeper mines">
+      <div class="thumb"><div class="emoji">💣</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>Minesweeper</h3><div class="stat-chip" data-stat="minesweeper">Loading…</div></div>
+    </a>
+
+    <a class="game-card" style="--card-color:#F06595; animation-delay:0.41s" href="games/reflex.html" data-title="reflex rush reaction">
+      <div class="thumb"><div class="emoji">⚡</div><div class="play-badge">▶ PLAY</div></div>
+      <div class="info"><h3>Reflex Rush</h3><div class="stat-chip" data-stat="reflex">Loading…</div></div>
+    </a>
+  </div>
+</div>
+
+<footer>Progress and high scores are saved locally in your browser.</footer>
+
+<script src="shared.js"></script>
+<script>
+  function formatTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  }
+
+  function bestOf(keys) {
+    let best = null;
+    keys.forEach(k => {
+      const v = localStorage.getItem(k);
+      if (v !== null) {
+        const n = parseInt(v, 10);
+        if (best === null || n < best) best = n;
+      }
+    });
+    return best;
+  }
+
+  function setChip(name, text) {
+    const el = document.querySelector(`[data-stat="${name}"]`);
+    if (el) el.textContent = text;
+  }
+
+  const memBest = bestOf(['memory-match-best-4x4', 'memory-match-best-5x4', 'memory-match-best-6x5']);
+  setChip('memory', memBest !== null ? `Best time: ${formatTime(memBest)}` : 'Not played yet');
+
+  const snakeHigh = localStorage.getItem('arcade-snake-highscore');
+  setChip('snake', snakeHigh ? `High score: ${snakeHigh}` : 'Not played yet');
+
+  const breakoutHigh = localStorage.getItem('arcade-breakout-highscore');
+  setChip('breakout', breakoutHigh ? `High score: ${breakoutHigh}` : 'Not played yet');
+
+  const t2048Best = localStorage.getItem('arcade-2048-best');
+  setChip('2048', t2048Best ? `Best score: ${t2048Best}` : 'Not played yet');
+
+  try {
+    const tttRaw = localStorage.getItem('arcade-ttt-record');
+    if (tttRaw) {
+      const rec = JSON.parse(tttRaw);
+      setChip('ttt', `${rec.w}W · ${rec.l}L · ${rec.d}D`);
+    } else {
+      setChip('ttt', 'Not played yet');
+    }
+  } catch (e) {
+    setChip('ttt', 'Not played yet');
+  }
+
+  const whackHigh = localStorage.getItem('arcade-whack-highscore');
+  setChip('whack', whackHigh ? `High score: ${whackHigh}` : 'Not played yet');
+
+  const flappyHigh = localStorage.getItem('arcade-flappy-highscore');
+  setChip('flappy', flappyHigh ? `High score: ${flappyHigh}` : 'Not played yet');
+
+  const shooterHigh = localStorage.getItem('arcade-spaceshooter-highscore');
+  setChip('spaceshooter', shooterHigh ? `High score: ${shooterHigh}` : 'Not played yet');
+
+  try {
+    const pongRaw = localStorage.getItem('arcade-pong-record');
+    if (pongRaw) {
+      const rec = JSON.parse(pongRaw);
+      setChip('pong', `${rec.w}W · ${rec.l}L`);
+    } else {
+      setChip('pong', 'Not played yet');
+    }
+  } catch (e) {
+    setChip('pong', 'Not played yet');
+  }
+
+  const tetrisHigh = localStorage.getItem('arcade-tetris-highscore');
+  setChip('tetris', tetrisHigh ? `High score: ${tetrisHigh}` : 'Not played yet');
+
+  const simonHigh = localStorage.getItem('arcade-simon-highscore');
+  setChip('simon', simonHigh ? `Best streak: ${simonHigh}` : 'Not played yet');
+
+  try {
+    const c4Raw = localStorage.getItem('arcade-connect4-record');
+    if (c4Raw) {
+      const rec = JSON.parse(c4Raw);
+      setChip('connect4', `${rec.w}W · ${rec.l}L · ${rec.d}D`);
+    } else {
+      setChip('connect4', 'Not played yet');
+    }
+  } catch (e) {
+    setChip('connect4', 'Not played yet');
+  }
+
+  const minesBest = localStorage.getItem('arcade-minesweeper-besttime');
+  setChip('minesweeper', minesBest ? `Best time: ${formatTime(parseInt(minesBest, 10))}` : 'Not played yet');
+
+  const reflexBest = localStorage.getItem('arcade-reflex-best');
+  setChip('reflex', reflexBest ? `Best avg: ${reflexBest}ms` : 'Not played yet');
+
+  Arcade.setupMuteButton(document.getElementById('mute'));
+
+  document.getElementById('search').addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll('.game-card').forEach(card => {
+      const match = !q || card.dataset.title.includes(q);
+      card.classList.toggle('hidden', !match);
+    });
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pong · Charlotte Arcade</title>
+<link rel="stylesheet" href="../shared.css" />
+<style>
+  .stage {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  #game {
+    width: 100%;
+    aspect-ratio: 560 / 400;
+    display: block;
+    border-radius: 20px;
+    background: var(--screen-bg);
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 16px 40px rgba(27, 27, 51, 0.18);
+    touch-action: none;
+    cursor: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+<canvas id="fx"></canvas>
+
+<div class="topbar">
+  <a class="back btn icon" href="../index.html">←</a>
+</div>
+
+<h1>🏓 Pong</h1>
+<p class="subtitle">Move your paddle with your mouse, finger, or arrow keys (W/S also work). First to 7 wins the match.</p>
+
+<div class="panel">
+  <div class="stat">
+    <div class="label">Player</div>
+    <div class="value" id="scorePlayer">0</div>
+  </div>
+  <div class="stat">
+    <div class="label">AI</div>
+    <div class="value" id="scoreAI">0</div>
+  </div>
+  <div class="stat">
+    <div class="label">Record</div>
+    <div class="value" id="record">0W · 0L</div>
+  </div>
+  <button class="primary" id="newGame">New Game</button>
+  <button class="icon" id="mute" title="Toggle sound">🔊</button>
+</div>
+
+<div class="stage">
+  <canvas id="game" width="560" height="400"></canvas>
+</div>
+
+<div class="banner" id="matchBanner">
+  <h2 id="bannerTitle">You Win!</h2>
+  <p id="bannerStats"></p>
+  <button class="primary" id="replayBtn">Play Again</button>
+</div>
+
+<footer>Drag, move your mouse, or use arrow keys / W-S to track the ball. Match record is saved locally.</footer>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scorePlayerEl = document.getElementById('scorePlayer');
+  const scoreAIEl = document.getElementById('scoreAI');
+  const recordEl = document.getElementById('record');
+  const newGameBtn = document.getElementById('newGame');
+  const replayBtn = document.getElementById('replayBtn');
+  const banner = document.getElementById('matchBanner');
+  const bannerTitle = document.getElementById('bannerTitle');
+  const bannerStats = document.getElementById('bannerStats');
+
+  const W = canvas.width, H = canvas.height;
+  const RECORD_KEY = 'arcade-pong-record';
+
+  const PADDLE_W = 12, PADDLE_H = 80;
+  const PLAYER_X = 24;
+  const AI_X = W - 24 - PADDLE_W;
+  const BALL_R = 7;
+
+  const BASE_SPEED = 5.2;
+  const SPEED_INC = 0.35;
+  const MAX_SPEED = 11;
+  const PLAYER_KEY_SPEED = 6.5;
+  const WIN_SCORE = 7;
+  const SERVE_DELAY = 650;
+
+  const AI_REACTION_FRAMES = 5;
+  const AI_MAX_SPEED = 5.4;
+  const AI_EASE = 0.14;
+  const AI_ERROR = 26;
+
+  let player, ai, ball, trail;
+  let scorePlayer, scoreAI, state, serveTimeout, keys, raf;
+  let aiTarget, aiReactionCounter;
+  let playerFlash = 0, aiFlash = 0;
+
+  function loadRecord() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(RECORD_KEY) || '{}');
+      return { w: raw.w || 0, l: raw.l || 0 };
+    } catch (e) {
+      return { w: 0, l: 0 };
+    }
+  }
+
+  function saveRecord(rec) {
+    localStorage.setItem(RECORD_KEY, JSON.stringify(rec));
+  }
+
+  function refreshRecordDisplay() {
+    const rec = loadRecord();
+    recordEl.textContent = `${rec.w}W · ${rec.l}L`;
+  }
+
+  function updateScoreDisplay() {
+    scorePlayerEl.textContent = scorePlayer;
+    scoreAIEl.textContent = scoreAI;
+  }
+
+  function resetPaddles() {
+    player = { x: PLAYER_X, y: H / 2 - PADDLE_H / 2, w: PADDLE_W, h: PADDLE_H };
+    ai = { x: AI_X, y: H / 2 - PADDLE_H / 2, w: PADDLE_W, h: PADDLE_H };
+    aiTarget = H / 2;
+    aiReactionCounter = 0;
+  }
+
+  function centerBall() {
+    ball = { x: W / 2, y: H / 2, r: BALL_R, vx: 0, vy: 0, speed: BASE_SPEED };
+    trail = [];
+  }
+
+  function launchBall() {
+    const angle = (Math.random() * 0.6 - 0.3) * Math.PI;
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    ball.speed = BASE_SPEED;
+    ball.vx = dir * ball.speed * Math.cos(angle);
+    ball.vy = ball.speed * Math.sin(angle);
+    state = 'playing';
+  }
+
+  function scheduleServe() {
+    state = 'serve';
+    centerBall();
+    clearTimeout(serveTimeout);
+    serveTimeout = setTimeout(() => {
+      if (state === 'serve') launchBall();
+    }, SERVE_DELAY);
+  }
+
+  function startMatch() {
+    clearTimeout(serveTimeout);
+    scorePlayer = 0;
+    scoreAI = 0;
+    updateScoreDisplay();
+    banner.classList.remove('show', 'lose');
+    resetPaddles();
+    scheduleServe();
+  }
+
+  function screenPoint(x, y) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: r.left + (x / W) * r.width,
+      y: r.top + (y / H) * r.height
+    };
+  }
+
+  function endMatch(winner) {
+    state = 'matchover';
+    clearTimeout(serveTimeout);
+    ball.vx = 0;
+    ball.vy = 0;
+    const rec = loadRecord();
+    if (winner === 'player') {
+      rec.w++;
+      saveRecord(rec);
+      bannerTitle.textContent = 'You Win!';
+      bannerStats.textContent = `Final score ${scorePlayer} - ${scoreAI}`;
+      banner.classList.remove('lose');
+      banner.classList.add('show');
+      Arcade.sfxWin();
+      Arcade.spawnConfetti();
+    } else {
+      rec.l++;
+      saveRecord(rec);
+      bannerTitle.textContent = 'AI Wins';
+      bannerStats.textContent = `Final score ${scorePlayer} - ${scoreAI}`;
+      banner.classList.add('lose', 'show');
+      Arcade.sfxGameOver();
+    }
+    refreshRecordDisplay();
+  }
+
+  function handlePoint(side) {
+    const edgeX = side === 'ai' ? 0 : W;
+    const p = screenPoint(edgeX, ball.y);
+    Arcade.spawnBurst(p.x, p.y);
+    Arcade.sfxHit();
+
+    if (side === 'ai') {
+      scoreAI++;
+    } else {
+      scorePlayer++;
+    }
+    updateScoreDisplay();
+
+    if (scorePlayer >= WIN_SCORE) {
+      endMatch('player');
+    } else if (scoreAI >= WIN_SCORE) {
+      endMatch('ai');
+    } else {
+      scheduleServe();
+    }
+  }
+
+  function updatePlayer() {
+    if (keys.up) player.y -= PLAYER_KEY_SPEED;
+    if (keys.down) player.y += PLAYER_KEY_SPEED;
+    if (pointerTargetY !== null) {
+      player.y += (pointerTargetY - PADDLE_H / 2 - player.y) * 0.6;
+    }
+    player.y = Math.max(0, Math.min(H - PADDLE_H, player.y));
+  }
+
+  function updateAI() {
+    if (state === 'playing') {
+      aiReactionCounter++;
+      if (aiReactionCounter >= AI_REACTION_FRAMES) {
+        aiReactionCounter = 0;
+        aiTarget = ball.y + (Math.random() * 2 - 1) * AI_ERROR;
+      }
+    } else {
+      aiTarget = H / 2;
+    }
+    const diff = aiTarget - (ai.y + PADDLE_H / 2);
+    let move = diff * AI_EASE;
+    move = Math.max(-AI_MAX_SPEED, Math.min(AI_MAX_SPEED, move));
+    ai.y += move;
+    ai.y = Math.max(0, Math.min(H - PADDLE_H, ai.y));
+  }
+
+  function paddleHit(paddle, isPlayer) {
+    const speed = Math.min(MAX_SPEED, ball.speed + SPEED_INC);
+    let hitPos = (ball.y - (paddle.y + PADDLE_H / 2)) / (PADDLE_H / 2);
+    hitPos = Math.max(-1, Math.min(1, hitPos));
+    const angle = hitPos * (Math.PI / 3);
+    ball.speed = speed;
+    ball.vx = (isPlayer ? 1 : -1) * speed * Math.cos(angle);
+    ball.vy = speed * Math.sin(angle);
+    ball.x = isPlayer ? paddle.x + paddle.w + ball.r : paddle.x - ball.r;
+
+    if (isPlayer) playerFlash = 1; else aiFlash = 1;
+    const p = screenPoint(ball.x, ball.y);
+    Arcade.spawnBurst(p.x, p.y);
+    Arcade.sfxBlip();
+  }
+
+  function update() {
+    updatePlayer();
+    updateAI();
+
+    if (playerFlash > 0) playerFlash = Math.max(0, playerFlash - 0.06);
+    if (aiFlash > 0) aiFlash = Math.max(0, aiFlash - 0.06);
+
+    if (state === 'playing') {
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+
+      trail.push({ x: ball.x, y: ball.y });
+      if (trail.length > 10) trail.shift();
+
+      if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy *= -1; }
+      if (ball.y + ball.r > H) { ball.y = H - ball.r; ball.vy *= -1; }
+
+      if (
+        ball.vx < 0 &&
+        ball.x - ball.r <= player.x + player.w &&
+        ball.x - ball.r >= player.x - 4 &&
+        ball.y + ball.r > player.y &&
+        ball.y - ball.r < player.y + player.h
+      ) {
+        paddleHit(player, true);
+      } else if (
+        ball.vx > 0 &&
+        ball.x + ball.r >= ai.x &&
+        ball.x + ball.r <= ai.x + ai.w + 4 &&
+        ball.y + ball.r > ai.y &&
+        ball.y - ball.r < ai.y + ai.h
+      ) {
+        paddleHit(ai, false);
+      }
+
+      if (ball.x + ball.r < 0) {
+        handlePoint('ai');
+      } else if (ball.x - ball.r > W) {
+        handlePoint('player');
+      }
+    }
+
+    draw();
+    raf = requestAnimationFrame(update);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(244,244,255,0.18)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([10, 12]);
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 0);
+    ctx.lineTo(W / 2, H);
+    ctx.stroke();
+    ctx.restore();
+
+    trail.forEach((t, i) => {
+      const a = (i + 1) / trail.length;
+      ctx.save();
+      ctx.globalAlpha = a * 0.35;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, BALL_R * a, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    drawPaddle(player, '#00e5ff', playerFlash);
+    drawPaddle(ai, '#ff3d7f', aiFlash);
+
+    ctx.save();
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    if (state === 'serve') {
+      ctx.fillStyle = 'rgba(244,244,255,0.6)';
+      ctx.font = '16px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Get ready...', W / 2, H / 2 - 24);
+    }
+  }
+
+  function drawPaddle(p, color, flash) {
+    ctx.save();
+    const glow = 10 + flash * 18;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = glow;
+    ctx.fillStyle = flash > 0 ? '#ffffff' : color;
+    ctx.beginPath();
+    ctx.roundRect(p.x, p.y, p.w, p.h, 6);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  let pointerTargetY = null;
+
+  function pointerY(clientY) {
+    const r = canvas.getBoundingClientRect();
+    return (clientY - r.top) * (H / r.height);
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    pointerTargetY = pointerY(e.clientY);
+  });
+  canvas.addEventListener('mouseleave', () => {
+    pointerTargetY = null;
+  });
+
+  canvas.addEventListener('touchmove', (e) => {
+    const t = e.touches[0];
+    pointerTargetY = pointerY(t.clientY);
+    e.preventDefault();
+  }, { passive: false });
+  canvas.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    pointerTargetY = pointerY(t.clientY);
+  }, { passive: true });
+
+  keys = { up: false, down: false };
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = true;
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.down = true;
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = false;
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.down = false;
+  });
+
+  newGameBtn.addEventListener('click', () => { startMatch(); });
+  replayBtn.addEventListener('click', () => { startMatch(); });
+  Arcade.setupMuteButton(document.getElementById('mute'));
+
+  refreshRecordDisplay();
+  resetPaddles();
+  centerBall();
+  startMatch();
+  raf = requestAnimationFrame(update);
+})();
+</script>
+
+</body>
+</html>
