@@ -1,14 +1,221 @@
 <!DOCTYPE html>
-<!-- auto-deploy test -->
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Charlotte Arcade</title>
+<title>Charlotte Arcade — 14 GAMES</title>
 <link rel="stylesheet" href="shared.css" />
 <style>
-  .nav-inner .btn.icon {
-    margin-left: 10px;
+  body {
+    background: repeating-linear-gradient(45deg, #0f0a1f, #0f0a1f 20px, #1a0f2e 20px, #1a0f2e 40px) !important;
+    animation: bgShift 8s linear infinite;
+    padding-top: 0 !important;
+  }
+
+  @keyframes bgShift {
+    0% { background-position: 0 0; }
+    100% { background-position: 40px 40px; }
+  }
+
+  .arcade-cabinet {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  .cabinet-top {
+    background: linear-gradient(180deg, #ff00ff, #ff1493, #00ffff);
+    padding: 3px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 50px rgba(255, 0, 255, 0.8), inset 0 0 30px rgba(0, 255, 255, 0.4);
+    animation: cabinetGlow 2s ease-in-out infinite;
+  }
+
+  @keyframes cabinetGlow {
+    0%, 100% { box-shadow: 0 0 50px rgba(255, 0, 255, 0.8), inset 0 0 30px rgba(0, 255, 255, 0.4); }
+    50% { box-shadow: 0 0 80px rgba(255, 0, 255, 1), inset 0 0 50px rgba(0, 255, 255, 0.6), 0 0 100px rgba(255, 1493, 0.5); }
+  }
+
+  .cabinet-inner {
+    background: #0f0a1f;
+    padding: 30px;
+    border-radius: 16px;
+  }
+
+  .title-banner {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: repeating-linear-gradient(90deg, #ff00ff, #ff00ff 10px, transparent 10px, transparent 20px);
+    border: 4px solid #00ffff;
+    border-radius: 20px;
+    box-shadow: 0 0 40px rgba(255, 0, 255, 0.8), inset 0 0 20px rgba(0, 255, 255, 0.3);
+    animation: titleFlash 0.5s ease-in-out infinite;
+  }
+
+  @keyframes titleFlash {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+  }
+
+  .title-banner h1 {
+    margin: 0;
+    font-size: 3.5rem;
+    font-weight: 900;
+    letter-spacing: 3px;
+    text-shadow: 0 0 30px rgba(255, 0, 255, 1), 0 0 60px rgba(0, 255, 255, 0.8);
+    color: #fff;
+    background: linear-gradient(90deg, #00ffff, #ff00ff, #ff1493, #00ffff);
+    background-size: 300% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: titleGradient 3s linear infinite;
+  }
+
+  @keyframes titleGradient {
+    0% { background-position: 0% center; }
+    100% { background-position: 300% center; }
+  }
+
+  .subtitle {
+    color: #00ffff;
+    font-size: 1.2rem;
+    font-weight: 800;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+    letter-spacing: 1px;
+  }
+
+  .leaderboard-section {
+    background: linear-gradient(135deg, rgba(255, 0, 255, 0.1), rgba(0, 255, 255, 0.1));
+    border: 3px solid #00ffff;
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(255, 0, 255, 0.2);
+  }
+
+  .leaderboard-section h2 {
+    color: #00ffff;
+    text-align: center;
+    font-size: 2rem;
+    margin: 0 0 15px;
+    text-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+    letter-spacing: 2px;
+  }
+
+  .player-input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    justify-content: center;
+  }
+
+  .player-input-row input {
+    padding: 12px 20px;
+    border: 2px solid #ff00ff;
+    background: rgba(15, 10, 31, 0.8);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
+    min-width: 200px;
+  }
+
+  .player-input-row input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .player-input-row button {
+    background: linear-gradient(135deg, #ff00ff, #ff1493) !important;
+    border: 2px solid #00ffff !important;
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.8), 0 0 40px rgba(0, 255, 255, 0.4) !important;
+    font-weight: 900 !important;
+    text-transform: uppercase;
+  }
+
+  .leaderboard-table {
+    width: 100%;
+    color: #00ffff;
+  }
+
+  .leaderboard-table th {
+    background: linear-gradient(90deg, rgba(255, 0, 255, 0.3), rgba(0, 255, 255, 0.3));
+    padding: 12px;
+    text-align: left;
+    font-weight: 900;
+    border-bottom: 2px solid #ff00ff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .leaderboard-table tr {
+    border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+    animation: rowGlow 0.5s ease-in-out infinite alternate;
+  }
+
+  .leaderboard-table tr:nth-child(1) { animation-delay: 0s; }
+  .leaderboard-table tr:nth-child(2) { animation-delay: 0.1s; }
+  .leaderboard-table tr:nth-child(3) { animation-delay: 0.2s; }
+
+  @keyframes rowGlow {
+    from { background: rgba(255, 0, 255, 0); }
+    to { background: rgba(255, 0, 255, 0.1); }
+  }
+
+  .leaderboard-table td {
+    padding: 12px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .rank-1 { color: #ffff00; text-shadow: 0 0 10px #ffff00; font-size: 1.1rem; }
+  .rank-2 { color: #c0c0c0; text-shadow: 0 0 10px #c0c0c0; }
+  .rank-3 { color: #cd7f32; text-shadow: 0 0 10px #cd7f32; }
+
+  .game-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+  }
+
+  .game-card {
+    animation: cardBounce 0.5s ease-in-out infinite alternate !important;
+  }
+
+  .game-card:nth-child(1) { animation-delay: 0s; }
+  .game-card:nth-child(2) { animation-delay: 0.1s; }
+  .game-card:nth-child(3) { animation-delay: 0.2s; }
+  .game-card:nth-child(4) { animation-delay: 0.3s; }
+  .game-card:nth-child(5) { animation-delay: 0.4s; }
+  .game-card:nth-child(6) { animation-delay: 0.5s; }
+
+  @keyframes cardBounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-10px); }
+  }
+
+  .cabinet-controls {
+    text-align: center;
+    margin-top: 30px;
+    padding: 20px;
+    background: linear-gradient(45deg, rgba(255, 0, 255, 0.2), rgba(0, 255, 255, 0.2));
+    border: 3px dashed #ff00ff;
+    border-radius: 15px;
+  }
+
+  .cabinet-controls button {
+    margin: 5px;
+    animation: buttonPulse 1s ease-in-out infinite;
+  }
+
+  @keyframes buttonPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
   }
 </style>
 </head>
@@ -17,203 +224,177 @@
 <div class="aurora"><span></span><span></span><span></span></div>
 <canvas id="fx"></canvas>
 
-<nav class="navbar">
-  <div class="nav-inner">
-    <a class="logo" href="index.html">
-      <span class="logo-mark">🕹️</span>
-      <span>Charlotte Arcade</span>
-    </a>
-    <div class="search-box">
-      <input type="text" id="search" placeholder="Search games…" autocomplete="off" />
+<div class="arcade-cabinet">
+  <div class="cabinet-top">
+    <div class="cabinet-inner">
+      <div class="title-banner">
+        <h1>🕹️ CHARLOTTE ARCADE 🕹️</h1>
+        <p class="subtitle">🎮 14 INSANE GAMES 🎮</p>
+      </div>
+
+      <div class="leaderboard-section">
+        <h2>⭐ LEADERBOARD ⭐</h2>
+
+        <div class="player-input-row">
+          <input type="text" id="playerName" placeholder="Enter your NAME to play..." maxlength="20" />
+          <button id="setPlayerBtn" class="primary">LOCK IN</button>
+          <div style="color: #00ffff; font-weight: 900; align-self: center;" id="currentPlayer">Player</div>
+        </div>
+
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>🏆 RANK 🏆</th>
+              <th>PLAYER</th>
+              <th>TOTAL SCORE</th>
+              <th>GAMES</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody">
+            <tr>
+              <td class="rank-1">🥇 1st</td>
+              <td>ARCADE LEGEND</td>
+              <td>999,999</td>
+              <td>14/14</td>
+            </tr>
+            <tr>
+              <td class="rank-2">🥈 2nd</td>
+              <td>TOP SCORER</td>
+              <td>888,888</td>
+              <td>12/14</td>
+            </tr>
+            <tr>
+              <td class="rank-3">🥉 3rd</td>
+              <td>CHALLENGER</td>
+              <td>777,777</td>
+              <td>10/14</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h2 style="color: #ff00ff; text-shadow: 0 0 20px rgba(255, 0, 255, 0.8); font-size: 2rem; letter-spacing: 2px; text-transform: uppercase;">CHOOSE YOUR BATTLE</h2>
+      </div>
+
+      <div class="game-grid" id="gameGrid">
+        <a class="game-card" style="--card-color:#FF6B6B; animation-delay:0.02s" href="games/memory.html" data-title="memory match">
+          <div class="thumb"><div class="emoji">🧠</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Memory Match</h3><div class="stat-chip" data-stat="memory">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#51CF66; animation-delay:0.05s" href="games/snake.html" data-title="snake">
+          <div class="thumb"><div class="emoji">🐍</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Snake</h3><div class="stat-chip" data-stat="snake">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#339AF0; animation-delay:0.08s" href="games/breakout.html" data-title="breakout">
+          <div class="thumb"><div class="emoji">🧱</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Breakout</h3><div class="stat-chip" data-stat="breakout">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#9775FA; animation-delay:0.11s" href="games/2048.html" data-title="2048">
+          <div class="thumb"><div class="emoji">🔢</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>2048</h3><div class="stat-chip" data-stat="2048">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#FFA94D; animation-delay:0.14s" href="games/tictactoe.html" data-title="tic tac toe">
+          <div class="thumb"><div class="emoji">⭕</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Tic-Tac-Toe</h3><div class="stat-chip" data-stat="ttt">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#FF8787; animation-delay:0.17s" href="games/whackamole.html" data-title="whack a mole">
+          <div class="thumb"><div class="emoji">🔨</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Whack-a-Mole</h3><div class="stat-chip" data-stat="whack">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#20C997; animation-delay:0.2s" href="games/flappy.html" data-title="flappy bird flap">
+          <div class="thumb"><div class="emoji">🐤</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Flappy Bird</h3><div class="stat-chip" data-stat="flappy">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#845EF7; animation-delay:0.23s" href="games/spaceshooter.html" data-title="space shooter">
+          <div class="thumb"><div class="emoji">🚀</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Space Shooter</h3><div class="stat-chip" data-stat="spaceshooter">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#FAB005; animation-delay:0.26s" href="games/pong.html" data-title="pong">
+          <div class="thumb"><div class="emoji">🏓</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Pong</h3><div class="stat-chip" data-stat="pong">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#FF6B9D; animation-delay:0.29s" href="games/tetris.html" data-title="tetris blocks">
+          <div class="thumb"><div class="emoji">🧩</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Tetris</h3><div class="stat-chip" data-stat="tetris">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#22B8CF; animation-delay:0.32s" href="games/simon.html" data-title="simon says">
+          <div class="thumb"><div class="emoji">🎵</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Simon Says</h3><div class="stat-chip" data-stat="simon">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#FD7E14; animation-delay:0.35s" href="games/connect4.html" data-title="connect four">
+          <div class="thumb"><div class="emoji">🔴</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Connect Four</h3><div class="stat-chip" data-stat="connect4">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#495057; animation-delay:0.38s" href="games/minesweeper.html" data-title="minesweeper mines">
+          <div class="thumb"><div class="emoji">💣</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Minesweeper</h3><div class="stat-chip" data-stat="minesweeper">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#F06595; animation-delay:0.41s" href="games/reflex.html" data-title="reflex rush reaction">
+          <div class="thumb"><div class="emoji">⚡</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Reflex Rush</h3><div class="stat-chip" data-stat="reflex">Loading…</div></div>
+        </a>
+      </div>
+
+      <div class="cabinet-controls">
+        <button class="icon" id="mute" title="Toggle sound" style="font-size: 1.5rem; padding: 15px 20px;">🔊 SOUND</button>
+        <button id="clearLeaderboard" class="primary" style="margin-left: 10px;">RESET BOARD</button>
+      </div>
     </div>
-    <button class="icon" id="mute" title="Toggle sound">🔊</button>
-  </div>
-</nav>
-
-<div class="hub">
-  <div class="hub-hero">
-    <h1>Play something fun</h1>
-    <p class="subtitle">14 free games. No installs, no accounts — just click and play.</p>
-  </div>
-
-  <div class="game-grid" id="gameGrid">
-    <a class="game-card" style="--card-color:#FF6B6B; animation-delay:0.02s" href="games/memory.html" data-title="memory match">
-      <div class="thumb"><div class="emoji">🧠</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>Memory Match</h3><div class="stat-chip" data-stat="memory">Loading…</div></div>
-    </a>
-
-    <a class="game-card" style="--card-color:#51CF66; animation-delay:0.05s" href="games/snake.html" data-title="snake">
-      <div class="thumb"><div class="emoji">🐍</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>Snake</h3><div class="stat-chip" data-stat="snake">Loading…</div></div>
-    </a>
-
-    <a class="game-card" style="--card-color:#339AF0; animation-delay:0.08s" href="games/breakout.html" data-title="breakout">
-      <div class="thumb"><div class="emoji">🧱</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>Breakout</h3><div class="stat-chip" data-stat="breakout">Loading…</div></div>
-    </a>
-
-    <a class="game-card" style="--card-color:#9775FA; animation-delay:0.11s" href="games/2048.html" data-title="2048">
-      <div class="thumb"><div class="emoji">🔢</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>2048</h3><div class="stat-chip" data-stat="2048">Loading…</div></div>
-    </a>
-
-    <a class="game-card" style="--card-color:#FFA94D; animation-delay:0.14s" href="games/tictactoe.html" data-title="tic tac toe">
-      <div class="thumb"><div class="emoji">⭕</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>Tic-Tac-Toe</h3><div class="stat-chip" data-stat="ttt">Loading…</div></div>
-    </a>
-
-    <a class="game-card" style="--card-color:#FF8787; animation-delay:0.17s" href="games/whackamole.html" data-title="whack a mole">
-      <div class="thumb"><div class="emoji">🔨</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>Whack-a-Mole</h3><div class="stat-chip" data-stat="whack">Loading…</div></div>
-    </a>
-
-    <a class="game-card" style="--card-color:#20C997; animation-delay:0.2s" href="games/flappy.html" data-title="flappy bird flap">
-      <div class="thumb"><div class="emoji">🐤</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>Flappy Bird</h3><div class="stat-chip" data-stat="flappy">Loading…</div></div>
-    </a>
-
-    <a class="game-card" style="--card-color:#845EF7; animation-delay:0.23s" href="games/spaceshooter.html" data-title="space shooter">
-      <div class="thumb"><div class="emoji">🚀</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>Space Shooter</h3><div class="stat-chip" data-stat="spaceshooter">Loading…</div></div>
-    </a>
-
-    <a class="game-card" style="--card-color:#FAB005; animation-delay:0.26s" href="games/pong.html" data-title="pong">
-      <div class="thumb"><div class="emoji">🏓</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>Pong</h3><div class="stat-chip" data-stat="pong">Loading…</div></div>
-    </a>
-
-    <a class="game-card" style="--card-color:#FF6B9D; animation-delay:0.29s" href="games/tetris.html" data-title="tetris blocks">
-      <div class="thumb"><div class="emoji">🧩</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>Tetris</h3><div class="stat-chip" data-stat="tetris">Loading…</div></div>
-    </a>
-
-    <a class="game-card" style="--card-color:#22B8CF; animation-delay:0.32s" href="games/simon.html" data-title="simon says">
-      <div class="thumb"><div class="emoji">🎵</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>Simon Says</h3><div class="stat-chip" data-stat="simon">Loading…</div></div>
-    </a>
-
-    <a class="game-card" style="--card-color:#FD7E14; animation-delay:0.35s" href="games/connect4.html" data-title="connect four">
-      <div class="thumb"><div class="emoji">🔴</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>Connect Four</h3><div class="stat-chip" data-stat="connect4">Loading…</div></div>
-    </a>
-
-    <a class="game-card" style="--card-color:#495057; animation-delay:0.38s" href="games/minesweeper.html" data-title="minesweeper mines">
-      <div class="thumb"><div class="emoji">💣</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>Minesweeper</h3><div class="stat-chip" data-stat="minesweeper">Loading…</div></div>
-    </a>
-
-    <a class="game-card" style="--card-color:#F06595; animation-delay:0.41s" href="games/reflex.html" data-title="reflex rush reaction">
-      <div class="thumb"><div class="emoji">⚡</div><div class="play-badge">▶ PLAY</div></div>
-      <div class="info"><h3>Reflex Rush</h3><div class="stat-chip" data-stat="reflex">Loading…</div></div>
-    </a>
   </div>
 </div>
 
-<footer>Progress and high scores are saved locally in your browser.</footer>
+<footer style="color: #00ffff; text-shadow: 0 0 10px rgba(0, 255, 255, 0.6); font-weight: 700; letter-spacing: 1px;">
+  🎮 ALL SCORES SAVED LOCALLY 🎮 BECOME THE ARCADE LEGEND 🎮
+</footer>
 
 <script src="shared.js"></script>
 <script>
-  function formatTime(s) {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m}:${sec.toString().padStart(2, '0')}`;
+  let playerName = localStorage.getItem('arcade-player-name') || 'PLAYER';
+
+  function updatePlayerDisplay() {
+    document.getElementById('currentPlayer').textContent = playerName;
+    updateLeaderboard();
   }
 
-  function bestOf(keys) {
-    let best = null;
-    keys.forEach(k => {
+  document.getElementById('playerName').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') document.getElementById('setPlayerBtn').click();
+  });
+
+  document.getElementById('setPlayerBtn').addEventListener('click', () => {
+    const input = document.getElementById('playerName').value.trim().toUpperCase() || 'PLAYER';
+    playerName = input;
+    localStorage.setItem('arcade-player-name', playerName);
+    document.getElementById('playerName').value = '';
+    updatePlayerDisplay();
+    Arcade.sfxWin();
+  });
+
+  document.getElementById('clearLeaderboard').addEventListener('click', () => {
+    if (confirm('🚨 CLEAR ALL SCORES? 🚨')) {
+      localStorage.clear();
+      location.reload();
+    }
+  });
+
+  function updateLeaderboard() {
+    const scores = [];
+    const gameKeys = ['arcade-2048-best','arcade-breakout-highscore','arcade-connect4-record','arcade-flappy-highscore','arcade-minesweeper-besttime','arcade-pong-record','arcade-reflex-best','arcade-simon-highscore','arcade-snake-highscore','arcade-spaceshooter-highscore','arcade-tetris-highscore','arcade-ttt-record','arcade-whack-highscore','memory-match-best-4x4','memory-match-best-5x4','memory-match-best-6x5'];
+
+    let totalScore = 0;
+    gameKeys.forEach(k => {
       const v = localStorage.getItem(k);
-      if (v !== null) {
-        const n = parseInt(v, 10);
-        if (best === null || n < best) best = n;
-      }
+      if (v && !isNaN(parseInt(v, 10))) totalScore += parseInt(v, 10);
     });
-    return best;
+
+    scores.push({ name: playerName, score: totalScore, games: 14 });
+
+    const rows = document.querySelectorAll('#leaderboardBody tr');
+    rows[0].innerHTML = `<td class="rank-1">🥇 1st</td><td>${scores[0].name}</td><td>${scores[0].score.toLocaleString()}</td><td>${scores[0].games}/14</td>`;
   }
-
-  function setChip(name, text) {
-    const el = document.querySelector(`[data-stat="${name}"]`);
-    if (el) el.textContent = text;
-  }
-
-  const memBest = bestOf(['memory-match-best-4x4', 'memory-match-best-5x4', 'memory-match-best-6x5']);
-  setChip('memory', memBest !== null ? `Best time: ${formatTime(memBest)}` : 'Not played yet');
-
-  const snakeHigh = localStorage.getItem('arcade-snake-highscore');
-  setChip('snake', snakeHigh ? `High score: ${snakeHigh}` : 'Not played yet');
-
-  const breakoutHigh = localStorage.getItem('arcade-breakout-highscore');
-  setChip('breakout', breakoutHigh ? `High score: ${breakoutHigh}` : 'Not played yet');
-
-  const t2048Best = localStorage.getItem('arcade-2048-best');
-  setChip('2048', t2048Best ? `Best score: ${t2048Best}` : 'Not played yet');
-
-  try {
-    const tttRaw = localStorage.getItem('arcade-ttt-record');
-    if (tttRaw) {
-      const rec = JSON.parse(tttRaw);
-      setChip('ttt', `${rec.w}W · ${rec.l}L · ${rec.d}D`);
-    } else {
-      setChip('ttt', 'Not played yet');
-    }
-  } catch (e) {
-    setChip('ttt', 'Not played yet');
-  }
-
-  const whackHigh = localStorage.getItem('arcade-whack-highscore');
-  setChip('whack', whackHigh ? `High score: ${whackHigh}` : 'Not played yet');
-
-  const flappyHigh = localStorage.getItem('arcade-flappy-highscore');
-  setChip('flappy', flappyHigh ? `High score: ${flappyHigh}` : 'Not played yet');
-
-  const shooterHigh = localStorage.getItem('arcade-spaceshooter-highscore');
-  setChip('spaceshooter', shooterHigh ? `High score: ${shooterHigh}` : 'Not played yet');
-
-  try {
-    const pongRaw = localStorage.getItem('arcade-pong-record');
-    if (pongRaw) {
-      const rec = JSON.parse(pongRaw);
-      setChip('pong', `${rec.w}W · ${rec.l}L`);
-    } else {
-      setChip('pong', 'Not played yet');
-    }
-  } catch (e) {
-    setChip('pong', 'Not played yet');
-  }
-
-  const tetrisHigh = localStorage.getItem('arcade-tetris-highscore');
-  setChip('tetris', tetrisHigh ? `High score: ${tetrisHigh}` : 'Not played yet');
-
-  const simonHigh = localStorage.getItem('arcade-simon-highscore');
-  setChip('simon', simonHigh ? `Best streak: ${simonHigh}` : 'Not played yet');
-
-  try {
-    const c4Raw = localStorage.getItem('arcade-connect4-record');
-    if (c4Raw) {
-      const rec = JSON.parse(c4Raw);
-      setChip('connect4', `${rec.w}W · ${rec.l}L · ${rec.d}D`);
-    } else {
-      setChip('connect4', 'Not played yet');
-    }
-  } catch (e) {
-    setChip('connect4', 'Not played yet');
-  }
-
-  const minesBest = localStorage.getItem('arcade-minesweeper-besttime');
-  setChip('minesweeper', minesBest ? `Best time: ${formatTime(parseInt(minesBest, 10))}` : 'Not played yet');
-
-  const reflexBest = localStorage.getItem('arcade-reflex-best');
-  setChip('reflex', reflexBest ? `Best avg: ${reflexBest}ms` : 'Not played yet');
 
   Arcade.setupMuteButton(document.getElementById('mute'));
-
-  document.getElementById('search').addEventListener('input', (e) => {
-    const q = e.target.value.trim().toLowerCase();
-    document.querySelectorAll('.game-card').forEach(card => {
-      const match = !q || card.dataset.title.includes(q);
-      card.classList.toggle('hidden', !match);
-    });
-  });
+  updatePlayerDisplay();
 </script>
 
 </body>
