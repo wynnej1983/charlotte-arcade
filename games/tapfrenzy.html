@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tap Frenzy · Charlotte Arcade</title>
+<link rel="stylesheet" href="../shared.css" />
+<style>
+  .arena {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    width: 100%;
+    max-width: 440px;
+    padding: 18px;
+    background: var(--screen-bg);
+    border-radius: 24px;
+    box-shadow: 0 16px 40px rgba(27, 27, 51, 0.18);
+  }
+  .pad {
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.08);
+    background: radial-gradient(circle at 50% 40%, #2a2a4a, #15152a);
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.08s ease, background 0.12s ease, box-shadow 0.12s ease;
+    box-shadow: inset 0 6px 14px rgba(0,0,0,0.5);
+  }
+  .pad:hover { transform: scale(1.04); }
+  .pad.active {
+    background: radial-gradient(circle at 50% 40%, #ff7ad9, #ff00ff);
+    border-color: #fff;
+    box-shadow: 0 0 30px rgba(255,0,255,0.9), 0 0 60px rgba(0,255,255,0.5);
+    animation: throb 0.5s ease-in-out infinite alternate;
+  }
+  .pad.miss { animation: shake 0.3s; }
+  @keyframes throb { from { transform: scale(1); } to { transform: scale(1.08); } }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+  .timer-bar {
+    width: 100%;
+    max-width: 440px;
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.1);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .timer-bar div {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #00ffff, #ff00ff);
+    transition: width 1s linear;
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+<canvas id="fx"></canvas>
+
+<div class="topbar">
+  <a class="back btn icon" href="../index.html">←</a>
+</div>
+
+<h1>👆 Tap Frenzy</h1>
+<p class="subtitle">20 seconds. Tap the glowing pad fast. Tapping the wrong pad costs points.</p>
+
+<div class="panel">
+  <div class="stat"><div class="label">Score</div><div class="value" id="score">0</div></div>
+  <div class="stat"><div class="label">Time</div><div class="value" id="time">20</div></div>
+  <div class="stat"><div class="label">High Score</div><div class="value" id="highscore">0</div></div>
+  <button class="primary" id="restart">Start</button>
+  <button class="icon" id="mute" title="Toggle sound">🔊</button>
+</div>
+
+<div class="timer-bar"><div id="bar"></div></div>
+
+<div class="arena" id="arena"></div>
+
+<div class="banner" id="overBanner">
+  <h2>Time's up!</h2>
+  <p id="overStats"></p>
+  <button class="primary" id="playAgain">Play Again</button>
+</div>
+
+<footer>Your high score is saved locally in this browser.</footer>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+  const HIGH_KEY = 'arcade-tapfrenzy-highscore';
+  const ROUND_SECONDS = 20;
+  const arenaEl = document.getElementById('arena');
+  const scoreEl = document.getElementById('score');
+  const timeEl = document.getElementById('time');
+  const highEl = document.getElementById('highscore');
+  const barEl = document.getElementById('bar');
+  const overBanner = document.getElementById('overBanner');
+  const overStats = document.getElementById('overStats');
+
+  let pads = [], activeIdx = -1, score = 0, timeLeft = ROUND_SECONDS, running = false;
+  let tickHandle = null, lightHandle = null;
+
+  function loadHigh() { return parseInt(localStorage.getItem(HIGH_KEY) || '0', 10); }
+
+  function build() {
+    arenaEl.innerHTML = '';
+    pads = [];
+    for (let i = 0; i < 9; i++) {
+      const b = document.createElement('button');
+      b.className = 'pad';
+      b.setAttribute('aria-label', `pad ${i + 1}`);
+      b.addEventListener('pointerdown', (e) => { e.preventDefault(); onPad(i, b); });
+      arenaEl.appendChild(b);
+      pads.push(b);
+    }
+  }
+
+  function lightRandom() {
+    if (!running) return;
+    if (activeIdx >= 0) pads[activeIdx].classList.remove('active');
+    let next;
+    do { next = Math.floor(Math.random() * pads.length); } while (next === activeIdx);
+    activeIdx = next;
+    pads[next].classList.add('active');
+    const duration = Math.max(550, 1100 - (score / 10) * 20);
+    clearTimeout(lightHandle);
+    lightHandle = setTimeout(() => {
+      if (!running || activeIdx !== next) return;
+      pads[next].classList.remove('active');
+      activeIdx = -1;
+      lightRandom();
+    }, duration);
+  }
+
+  function onPad(i, el) {
+    if (!running) return;
+    if (i === activeIdx) {
+      score += 10;
+      scoreEl.textContent = score;
+      Arcade.sfxHit();
+      const r = el.getBoundingClientRect();
+      Arcade.spawnBurst(r.left + r.width / 2, r.top + r.height / 2);
+      el.classList.remove('active');
+      activeIdx = -1;
+      lightRandom();
+    } else {
+      score = Math.max(0, score - 5);
+      scoreEl.textContent = score;
+      Arcade.sfxMiss();
+      el.classList.remove('miss');
+      void el.offsetWidth;
+      el.classList.add('miss');
+    }
+  }
+
+  function startRound() {
+    clearInterval(tickHandle);
+    clearTimeout(lightHandle);
+    build();
+    running = true;
+    score = 0;
+    timeLeft = ROUND_SECONDS;
+    activeIdx = -1;
+    scoreEl.textContent = '0';
+    timeEl.textContent = timeLeft;
+    barEl.style.width = '100%';
+    highEl.textContent = loadHigh();
+    overBanner.classList.remove('show');
+    lightRandom();
+    tickHandle = setInterval(() => {
+      timeLeft--;
+      timeEl.textContent = timeLeft;
+      barEl.style.width = (timeLeft / ROUND_SECONDS * 100) + '%';
+      if (timeLeft <= 0) endRound();
+    }, 1000);
+  }
+
+  function endRound() {
+    running = false;
+    clearInterval(tickHandle);
+    clearTimeout(lightHandle);
+    pads.forEach(p => p.classList.remove('active'));
+    const prev = loadHigh();
+    const isNewBest = score > prev;
+    if (isNewBest) localStorage.setItem(HIGH_KEY, String(score));
+    highEl.textContent = loadHigh();
+    overStats.textContent = `Score: ${score}${isNewBest ? ' · new high score! 🏆' : ''}`;
+    overBanner.classList.add('show');
+    if (isNewBest) { Arcade.spawnConfetti(); Arcade.sfxWin(); }
+    else Arcade.sfxGameOver();
+  }
+
+  document.getElementById('restart').addEventListener('click', startRound);
+  document.getElementById('playAgain').addEventListener('click', startRound);
+  Arcade.setupMuteButton(document.getElementById('mute'));
+
+  highEl.textContent = loadHigh();
+  build();
+})();
+</script>
+
+</body>
+</html>

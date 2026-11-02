@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dodge Dash · Charlotte Arcade</title>
+<link rel="stylesheet" href="../shared.css" />
+<style>
+  .stage { width: 100%; max-width: 480px; }
+  #game {
+    width: 100%;
+    aspect-ratio: 480 / 600;
+    display: block;
+    border-radius: 20px;
+    background: var(--screen-bg);
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 16px 40px rgba(27, 27, 51, 0.18);
+    touch-action: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+<canvas id="fx"></canvas>
+
+<div class="topbar">
+  <a class="back btn icon" href="../index.html">←</a>
+</div>
+
+<h1>🏃 Dodge Dash</h1>
+<p class="subtitle">Arrow keys, A/D, mouse or finger. Dodge the blocks. It gets faster.</p>
+
+<div class="panel">
+  <div class="stat"><div class="label">Score</div><div class="value" id="score">0</div></div>
+  <div class="stat"><div class="label">High Score</div><div class="value" id="highscore">0</div></div>
+  <button class="primary" id="restart">New Run</button>
+  <button class="icon" id="mute" title="Toggle sound">🔊</button>
+</div>
+
+<div class="stage">
+  <canvas id="game" width="480" height="600"></canvas>
+</div>
+
+<div class="banner lose" id="overBanner">
+  <h2>Crashed!</h2>
+  <p id="overStats"></p>
+  <button class="primary" id="playAgain">Play Again</button>
+</div>
+
+<footer>Your high score is saved locally in this browser.</footer>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const HIGH_KEY = 'arcade-dodge-highscore';
+  const COLORS = ['#ff00ff', '#00ffff', '#ffd93d', '#39ffb0', '#ff5a7a'];
+  const scoreEl = document.getElementById('score');
+  const highEl = document.getElementById('highscore');
+  const overBanner = document.getElementById('overBanner');
+  const overStats = document.getElementById('overStats');
+
+  let player, blocks, score, running, raf, t0, lastSpawn, last, pointerX;
+  const keys = { l: false, r: false };
+
+  function loadHigh() { return parseInt(localStorage.getItem(HIGH_KEY) || '0', 10); }
+
+  function reset() {
+    cancelAnimationFrame(raf);
+    player = { x: W / 2 - 20, y: H - 60, w: 40, h: 40 };
+    blocks = [];
+    score = 0;
+    running = true;
+    pointerX = null;
+    last = 0;
+    lastSpawn = 0;
+    t0 = performance.now();
+    scoreEl.textContent = '0';
+    highEl.textContent = loadHigh();
+    overBanner.classList.remove('show');
+    raf = requestAnimationFrame(loop);
+  }
+
+  function loop(now) {
+    if (!running) return;
+    const dt = last ? Math.min(40, now - last) : 16;
+    last = now;
+    const elapsed = now - t0;
+    const speed = 3 + Math.min(elapsed / 20000, 1) * 5;
+    const spawnEvery = Math.max(230, 700 - elapsed / 120);
+
+    if (now - lastSpawn > spawnEvery) {
+      lastSpawn = now;
+      const w = 30 + Math.random() * 60;
+      blocks.push({
+        x: Math.random() * (W - w), y: -40, w, h: 22 + Math.random() * 18,
+        v: speed * (0.7 + Math.random() * 0.8),
+        color: COLORS[Math.floor(Math.random() * COLORS.length)]
+      });
+    }
+
+    const step = dt / 16;
+    if (keys.l) player.x -= 7 * step;
+    if (keys.r) player.x += 7 * step;
+    if (pointerX !== null) player.x += (pointerX - player.w / 2 - player.x) * Math.min(1, 0.25 * step);
+    player.x = Math.max(0, Math.min(W - player.w, player.x));
+
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      const b = blocks[i];
+      b.y += b.v * step;
+      const hit = b.x < player.x + player.w - 6 && b.x + b.w > player.x + 6 &&
+                  b.y < player.y + player.h - 6 && b.y + b.h > player.y + 6;
+      if (hit) { gameOver(); return; }
+      if (b.y > H) {
+        blocks.splice(i, 1);
+        score++;
+        scoreEl.textContent = score;
+        if (score % 10 === 0) Arcade.sfxBlip();
+      }
+    }
+
+    draw();
+    raf = requestAnimationFrame(loop);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(255,0,255,0.12)';
+    for (let y = 0; y < H; y += 40) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    blocks.forEach(b => {
+      ctx.save();
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = b.color;
+      ctx.beginPath();
+      ctx.roundRect(b.x, b.y, b.w, b.h, 6);
+      ctx.fill();
+      ctx.restore();
+    });
+    ctx.save();
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = '#00ffff';
+    ctx.beginPath();
+    ctx.roundRect(player.x, player.y, player.w, player.h, 10);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function gameOver() {
+    running = false;
+    cancelAnimationFrame(raf);
+    const prev = loadHigh();
+    const isNewBest = score > prev;
+    if (isNewBest) localStorage.setItem(HIGH_KEY, String(score));
+    highEl.textContent = loadHigh();
+    draw();
+    overStats.textContent = `Score: ${score}${isNewBest ? ' · new high score! 🏆' : ''}`;
+    overBanner.classList.add('show');
+    if (isNewBest) { Arcade.spawnConfetti(); Arcade.sfxWin(); }
+    else Arcade.sfxGameOver();
+    const cx = canvas.getBoundingClientRect();
+    Arcade.spawnBurst(cx.left + (player.x + player.w / 2) * (cx.width / W), cx.top + (player.y + player.h / 2) * (cx.height / H));
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') { keys.l = true; e.preventDefault(); }
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { keys.r = true; e.preventDefault(); }
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.l = false;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.r = false;
+  });
+
+  function toCanvasX(clientX) {
+    const r = canvas.getBoundingClientRect();
+    return (clientX - r.left) * (W / r.width);
+  }
+  canvas.addEventListener('mousemove', (e) => { pointerX = toCanvasX(e.clientX); });
+  canvas.addEventListener('mouseleave', () => { pointerX = null; });
+  canvas.addEventListener('touchmove', (e) => {
+    pointerX = toCanvasX(e.touches[0].clientX);
+    e.preventDefault();
+  }, { passive: false });
+  canvas.addEventListener('touchend', () => { pointerX = null; });
+
+  document.getElementById('restart').addEventListener('click', reset);
+  document.getElementById('playAgain').addEventListener('click', reset);
+  Arcade.setupMuteButton(document.getElementById('mute'));
+
+  reset();
+})();
+</script>
+
+</body>
+</html>

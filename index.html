@@ -334,6 +334,22 @@
           <div class="thumb"><div class="emoji">⚡</div><div class="play-badge">▶ PLAY</div></div>
           <div class="info"><h3>Reflex Rush</h3><div class="stat-chip" data-stat="reflex">Loading…</div></div>
         </a>
+        <a class="game-card" style="--card-color:#FF3DA5; animation-delay:0.44s" href="games/dodge.html" data-title="dodge dash block runner">
+          <div class="thumb"><div class="emoji">🏃</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Dodge Dash</h3><div class="stat-chip" data-stat="dodge">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#4DABF7; animation-delay:0.47s" href="games/hangman.html" data-title="hangman word guess">
+          <div class="thumb"><div class="emoji">🔤</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Hangman</h3><div class="stat-chip" data-stat="hangman">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#FF922B; animation-delay:0.5s" href="games/tapfrenzy.html" data-title="tap frenzy speed clicker">
+          <div class="thumb"><div class="emoji">👆</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Tap Frenzy</h3><div class="stat-chip" data-stat="tapfrenzy">Loading…</div></div>
+        </a>
+        <a class="game-card" style="--card-color:#FFD43B; animation-delay:0.53s" href="games/lightsout.html" data-title="lights out puzzle">
+          <div class="thumb"><div class="emoji">💡</div><div class="play-badge">▶ PLAY</div></div>
+          <div class="info"><h3>Lights Out</h3><div class="stat-chip" data-stat="lightsout">Loading…</div></div>
+        </a>
       </div>
 
       <div class="cabinet-controls">
@@ -379,7 +395,7 @@
 
   function updateLeaderboard() {
     const scores = [];
-    const gameKeys = ['arcade-2048-best','arcade-breakout-highscore','arcade-connect4-record','arcade-flappy-highscore','arcade-minesweeper-besttime','arcade-pong-record','arcade-reflex-best','arcade-simon-highscore','arcade-snake-highscore','arcade-spaceshooter-highscore','arcade-tetris-highscore','arcade-ttt-record','arcade-whack-highscore','memory-match-best-4x4','memory-match-best-5x4','memory-match-best-6x5'];
+    const gameKeys = ['arcade-2048-best','arcade-breakout-highscore','arcade-connect4-record','arcade-flappy-highscore','arcade-minesweeper-besttime','arcade-pong-record','arcade-reflex-best','arcade-simon-highscore','arcade-snake-highscore','arcade-spaceshooter-highscore','arcade-tetris-highscore','arcade-ttt-record','arcade-whack-highscore','memory-match-best-4x4','memory-match-best-5x4','memory-match-best-6x5','arcade-dodge-highscore','arcade-hangman-highscore','arcade-tapfrenzy-highscore','arcade-lightsout-best'];
 
     let totalScore = 0;
     gameKeys.forEach(k => {
@@ -392,6 +408,51 @@
     const rows = document.querySelectorAll('#leaderboardBody tr');
     rows[0].innerHTML = `<td class="rank-1">🥇 1st</td><td>${scores[0].name}</td><td>${scores[0].score.toLocaleString()}</td><td>${scores[0].games}/14</td>`;
   }
+
+  function setChip(name, text) {
+    const el = document.querySelector(`[data-stat="${name}"]`);
+    if (el) el.textContent = text;
+  }
+  function fmtTime(s) {
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+  function readJSON(key) {
+    try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
+  }
+
+  const memKeys = ['memory-match-best-4x4', 'memory-match-best-5x4', 'memory-match-best-6x5']
+    .map(k => localStorage.getItem(k)).filter(v => v !== null).map(v => parseInt(v, 10));
+  setChip('memory', memKeys.length ? `Best time: ${fmtTime(Math.min(...memKeys))}` : 'Not played yet');
+
+  const hi = {
+    snake: ['arcade-snake-highscore', 'High score'],
+    breakout: ['arcade-breakout-highscore', 'High score'],
+    flappy: ['arcade-flappy-highscore', 'High score'],
+    spaceshooter: ['arcade-spaceshooter-highscore', 'High score'],
+    tetris: ['arcade-tetris-highscore', 'High score'],
+    whack: ['arcade-whack-highscore', 'High score'],
+    dodge: ['arcade-dodge-highscore', 'High score'],
+    tapfrenzy: ['arcade-tapfrenzy-highscore', 'High score'],
+    hangman: ['arcade-hangman-highscore', 'High score'],
+    '2048': ['arcade-2048-best', 'Best score'],
+    simon: ['arcade-simon-highscore', 'Best streak'],
+    lightsout: ['arcade-lightsout-best', 'Best score'],
+    reflex: ['arcade-reflex-best', 'Best avg']
+  };
+  Object.entries(hi).forEach(([name, [key, label]]) => {
+    const v = localStorage.getItem(key);
+    setChip(name, v ? `${label}: ${v}${name === 'reflex' ? 'ms' : ''}` : 'Not played yet');
+  });
+
+  [['ttt', 'arcade-ttt-record', 'wld'], ['connect4', 'arcade-connect4-record', 'wld'], ['pong', 'arcade-pong-record', 'wl']]
+    .forEach(([name, key, shape]) => {
+      const r = readJSON(key);
+      if (!r) return setChip(name, 'Not played yet');
+      setChip(name, shape === 'wld' ? `${r.w}W · ${r.l}L · ${r.d}D` : `${r.w}W · ${r.l}L`);
+    });
+
+  const mineBest = localStorage.getItem('arcade-minesweeper-besttime');
+  setChip('minesweeper', mineBest ? `Best time: ${fmtTime(parseInt(mineBest, 10))}` : 'Not played yet');
 
   Arcade.setupMuteButton(document.getElementById('mute'));
   updatePlayerDisplay();

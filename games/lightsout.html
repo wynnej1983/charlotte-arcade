@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lights Out · Charlotte Arcade</title>
+<link rel="stylesheet" href="../shared.css" />
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 420px;
+    padding: 16px;
+    background: var(--screen-bg);
+    border-radius: 24px;
+    box-shadow: 0 16px 40px rgba(27, 27, 51, 0.18);
+  }
+  .light {
+    aspect-ratio: 1 / 1;
+    border-radius: 14px;
+    border: 2px solid rgba(255,255,255,0.08);
+    background: #1e1e38;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+  }
+  .light:hover { transform: scale(1.05); }
+  .light.on {
+    background: radial-gradient(circle at 40% 35%, #fff7b0, #ffd93d);
+    border-color: #fff;
+    box-shadow: 0 0 18px rgba(255, 217, 61, 0.9), 0 0 36px rgba(255, 0, 255, 0.4);
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+<canvas id="fx"></canvas>
+
+<div class="topbar">
+  <a class="back btn icon" href="../index.html">←</a>
+</div>
+
+<h1>💡 Lights Out</h1>
+<p class="subtitle">Tap a light to flip it and its neighbors. Switch them all off in as few moves as you can.</p>
+
+<div class="panel">
+  <div class="stat"><div class="label">Moves</div><div class="value" id="moves">0</div></div>
+  <div class="stat"><div class="label">Lights On</div><div class="value" id="left">0</div></div>
+  <div class="stat"><div class="label">Best Score</div><div class="value" id="best">0</div></div>
+  <button class="primary" id="restart">New Puzzle</button>
+  <button class="icon" id="mute" title="Toggle sound">🔊</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="banner" id="winBanner">
+  <h2>Lights out! 💡</h2>
+  <p id="winStats"></p>
+  <button class="primary" id="nextPuzzle">Next Puzzle</button>
+</div>
+
+<footer>Points = 400 − 10 per move (minimum 10). Your best score is saved locally.</footer>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+  const N = 5;
+  const HIGH_KEY = 'arcade-lightsout-best';
+  const gridEl = document.getElementById('grid');
+  const movesEl = document.getElementById('moves');
+  const leftEl = document.getElementById('left');
+  const bestEl = document.getElementById('best');
+  const winBanner = document.getElementById('winBanner');
+  const winStats = document.getElementById('winStats');
+
+  let state, cells, moves, solved;
+
+  function loadBest() { return parseInt(localStorage.getItem(HIGH_KEY) || '0', 10); }
+
+  function toggle(r, c) {
+    const flips = [[r, c], [r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
+    flips.forEach(([y, x]) => {
+      if (y >= 0 && y < N && x >= 0 && x < N) state[y][x] = !state[y][x];
+    });
+  }
+
+  function newPuzzle() {
+    // Start solved, then apply random presses so the puzzle is always solvable.
+    do {
+      state = Array.from({ length: N }, () => Array(N).fill(false));
+      for (let i = 0; i < 12; i++) {
+        toggle(Math.floor(Math.random() * N), Math.floor(Math.random() * N));
+      }
+    } while (state.every(row => row.every(v => !v)));
+    moves = 0;
+    solved = false;
+    winBanner.classList.remove('show');
+    bestEl.textContent = loadBest();
+    render();
+  }
+
+  function build() {
+    gridEl.innerHTML = '';
+    cells = [];
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const b = document.createElement('button');
+        b.className = 'light';
+        b.addEventListener('click', () => press(r, c));
+        gridEl.appendChild(b);
+        cells.push(b);
+      }
+    }
+  }
+
+  function render() {
+    let on = 0;
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const lit = state[r][c];
+        if (lit) on++;
+        cells[r * N + c].classList.toggle('on', lit);
+      }
+    }
+    movesEl.textContent = moves;
+    leftEl.textContent = on;
+  }
+
+  function press(r, c) {
+    if (solved) return;
+    toggle(r, c);
+    moves++;
+    Arcade.sfxFlip();
+    render();
+    const cell = cells[r * N + c].getBoundingClientRect();
+    Arcade.spawnBurst(cell.left + cell.width / 2, cell.top + cell.height / 2);
+    if (state.every(row => row.every(v => !v))) win();
+  }
+
+  function win() {
+    solved = true;
+    const points = Math.max(10, 400 - moves * 10);
+    const prev = loadBest();
+    const isNewBest = points > prev;
+    if (isNewBest) localStorage.setItem(HIGH_KEY, String(points));
+    bestEl.textContent = loadBest();
+    winStats.textContent = `${moves} moves · +${points} points${isNewBest ? ' · new best! 🏆' : ''}`;
+    winBanner.classList.add('show');
+    Arcade.sfxWin();
+    Arcade.spawnConfetti();
+  }
+
+  document.getElementById('restart').addEventListener('click', newPuzzle);
+  document.getElementById('nextPuzzle').addEventListener('click', newPuzzle);
+  Arcade.setupMuteButton(document.getElementById('mute'));
+
+  build();
+  newPuzzle();
+})();
+</script>
+
+</body>
+</html>

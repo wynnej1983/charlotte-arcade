@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hangman · Charlotte Arcade</title>
+<link rel="stylesheet" href="../shared.css" />
+<style>
+  .word-screen {
+    background: var(--screen-bg);
+    border-radius: 20px;
+    padding: 28px 20px;
+    width: 100%;
+    max-width: 560px;
+    text-align: center;
+    box-shadow: 0 16px 40px rgba(27, 27, 51, 0.18);
+  }
+  .lives { font-size: 1.6rem; letter-spacing: 6px; min-height: 2rem; }
+  .word {
+    font-size: clamp(1.6rem, 6vw, 2.6rem);
+    font-weight: 700;
+    letter-spacing: 8px;
+    color: #fff;
+    margin: 22px 0 6px;
+    min-height: 3rem;
+    font-family: 'Fredoka', monospace;
+  }
+  .word span.blank { border-bottom: 3px solid var(--accent-3); color: transparent; padding: 0 2px; }
+  .hint { color: var(--muted); font-size: 0.9rem; min-height: 1.2em; }
+  .keyboard {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    width: 100%;
+    max-width: 560px;
+    margin-top: 20px;
+  }
+  .keyboard button {
+    padding: 10px 0;
+    font-size: 1rem;
+    min-width: 0;
+    justify-content: center;
+  }
+  .keyboard button:disabled { opacity: 0.25; cursor: default; transform: none; }
+  .keyboard button.hit { background: var(--win); color: #0a0a18; border-color: var(--win); }
+  .keyboard button.miss { background: var(--lose); color: #fff; border-color: var(--lose); }
+  .shake { animation: shake 0.35s; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+<canvas id="fx"></canvas>
+
+<div class="topbar">
+  <a class="back btn icon" href="../index.html">←</a>
+</div>
+
+<h1>🔤 Hangman</h1>
+<p class="subtitle">Guess the arcade word before you run out of hearts. Solve words to keep your run alive.</p>
+
+<div class="panel">
+  <div class="stat"><div class="label">Run Score</div><div class="value" id="score">0</div></div>
+  <div class="stat"><div class="label">Words Solved</div><div class="value" id="solved">0</div></div>
+  <div class="stat"><div class="label">High Score</div><div class="value" id="highscore">0</div></div>
+  <button class="primary" id="restart">New Run</button>
+  <button class="icon" id="mute" title="Toggle sound">🔊</button>
+</div>
+
+<div class="word-screen" id="screen">
+  <div class="lives" id="lives"></div>
+  <div class="word" id="word"></div>
+  <div class="hint" id="hint">Type a letter or tap below</div>
+</div>
+
+<div class="keyboard" id="keyboard"></div>
+
+<div class="banner lose" id="overBanner">
+  <h2>Out of hearts!</h2>
+  <p id="overStats"></p>
+  <button class="primary" id="playAgain">Play Again</button>
+</div>
+
+<footer>Your high score is saved locally in this browser.</footer>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+  const WORDS = ['ARCADE','PIXEL','JOYSTICK','GALAXY','ROCKET','DRAGON','NINJA','WIZARD','PLANET','CAPTAIN','MONSTER','TURBO','ENERGY','THUNDER','CRYSTAL','PHOENIX','VORTEX','SAMURAI','COSMIC','GLITCH','NEON','HYPER','RAINBOW','ZOMBIE','PIRATE','ROBOT','JUNGLE','CASTLE'];
+  const MAX_LIVES = 6;
+  const HIGH_KEY = 'arcade-hangman-highscore';
+
+  const scoreEl = document.getElementById('score');
+  const solvedEl = document.getElementById('solved');
+  const highEl = document.getElementById('highscore');
+  const livesEl = document.getElementById('lives');
+  const wordEl = document.getElementById('word');
+  const hintEl = document.getElementById('hint');
+  const screenEl = document.getElementById('screen');
+  const kbEl = document.getElementById('keyboard');
+  const overBanner = document.getElementById('overBanner');
+  const overStats = document.getElementById('overStats');
+
+  let word, guessed, lives, score, solved, running;
+
+  function loadHigh() { return parseInt(localStorage.getItem(HIGH_KEY) || '0', 10); }
+
+  function buildKeyboard() {
+    kbEl.innerHTML = '';
+    for (let i = 65; i <= 90; i++) {
+      const letter = String.fromCharCode(i);
+      const b = document.createElement('button');
+      b.textContent = letter;
+      b.dataset.letter = letter;
+      b.addEventListener('click', () => guess(letter));
+      kbEl.appendChild(b);
+    }
+  }
+
+  function renderWord() {
+    wordEl.innerHTML = word.split('').map(ch =>
+      guessed.has(ch) ? `<span>${ch}</span>` : `<span class="blank">${ch}</span>`
+    ).join('');
+  }
+
+  function renderLives() {
+    livesEl.textContent = '❤️'.repeat(lives) + '🖤'.repeat(MAX_LIVES - lives);
+  }
+
+  function newWord() {
+    word = WORDS[Math.floor(Math.random() * WORDS.length)];
+    guessed = new Set();
+    lives = MAX_LIVES;
+    renderLives();
+    renderWord();
+    hintEl.textContent = `${word.length} letters. Good luck!`;
+    kbEl.querySelectorAll('button').forEach(b => {
+      b.disabled = false;
+      b.classList.remove('hit', 'miss');
+    });
+  }
+
+  function guess(letter) {
+    if (!running || guessed.has(letter)) return;
+    guessed.add(letter);
+    const btn = kbEl.querySelector(`[data-letter="${letter}"]`);
+    if (btn) btn.disabled = true;
+
+    if (word.includes(letter)) {
+      if (btn) btn.classList.add('hit');
+      Arcade.sfxMatch(0);
+      renderWord();
+      if (word.split('').every(ch => guessed.has(ch))) {
+        winWord();
+      }
+    } else {
+      if (btn) btn.classList.add('miss');
+      lives--;
+      renderLives();
+      Arcade.sfxMiss();
+      screenEl.classList.remove('shake');
+      void screenEl.offsetWidth;
+      screenEl.classList.add('shake');
+      if (lives === 0) {
+        loseRun();
+      }
+    }
+  }
+
+  function winWord() {
+    const points = 100 + lives * 15;
+    score += points;
+    solved++;
+    scoreEl.textContent = score;
+    solvedEl.textContent = solved;
+    hintEl.textContent = `Solved! +${points}`;
+    Arcade.sfxWin();
+    Arcade.spawnConfetti();
+    setTimeout(() => { if (running) newWord(); }, 1100);
+  }
+
+  function loseRun() {
+    running = false;
+    const prev = loadHigh();
+    const isNewBest = score > prev;
+    if (isNewBest) localStorage.setItem(HIGH_KEY, String(score));
+    highEl.textContent = loadHigh();
+    wordEl.innerHTML = word.split('').map(ch => `<span>${ch}</span>`).join('');
+    hintEl.textContent = `The word was ${word}`;
+    kbEl.querySelectorAll('button').forEach(b => b.disabled = true);
+    overStats.textContent = `Score: ${score} · Words solved: ${solved}${isNewBest ? ' · new high score! 🏆' : ''}`;
+    overBanner.classList.add('show');
+    Arcade.sfxGameOver();
+  }
+
+  function startRun() {
+    running = true;
+    score = 0;
+    solved = 0;
+    scoreEl.textContent = '0';
+    solvedEl.textContent = '0';
+    highEl.textContent = loadHigh();
+    overBanner.classList.remove('show');
+    newWord();
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (/^[a-zA-Z]$/.test(e.key)) guess(e.key.toUpperCase());
+  });
+
+  document.getElementById('restart').addEventListener('click', startRun);
+  document.getElementById('playAgain').addEventListener('click', startRun);
+  Arcade.setupMuteButton(document.getElementById('mute'));
+
+  buildKeyboard();
+  startRun();
+})();
+</script>
+
+</body>
+</html>
