@@ -273,3 +273,25 @@
   font-family: inherit;
   min-width: 0;
 }
+
+.tch-stage {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 16px 0;
+}
+#tchCam {
+  width: 160px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 2px solid #00ffff;
+  box-shadow: 0 0 18px rgba(0, 255, 255, 0.5);
+  transform: scaleX(-1);
+}
+#tchCam[hidden], #tchMic[hidden] { display: none; }
+#tchMic {
+  color: #39ffb0;
+  font-weight: 700;
+  animation: ring 1s ease-in-out infinite alternate;
+}

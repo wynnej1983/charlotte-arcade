@@ -92,26 +92,104 @@
   const callBtn = document.getElementById('tchCall');
   const form = document.getElementById('tchForm');
   const input = document.getElementById('tchInput');
+  const camEl = document.getElementById('tchCam');
+  const micEl = document.getElementById('tchMic');
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const GOOD_VOICE = /premium|enhanced|natural|neural|google|samantha|daniel|karen|moira|serena|tessa/i;
 
   let current = null;
   let onCall = false;
+  let speaking = false;
   let voices = [];
+  let recog = null;
+  let camStream = null;
 
-  function loadVoices() { if ('speechSynthesis' in window) voices = speechSynthesis.getVoices(); }
+  function loadVoices() {
+    if (!('speechSynthesis' in window)) return;
+    const all = speechSynthesis.getVoices();
+    const en = all.filter(v => /^en/i.test(v.lang));
+    const good = en.filter(v => GOOD_VOICE.test(v.name));
+    voices = (good.length ? good : en).concat(all.filter(v => !en.includes(v)));
+  }
   if ('speechSynthesis' in window) {
     speechSynthesis.onvoiceschanged = loadVoices;
     loadVoices();
   }
 
+  function afterSpeech() {
+    speaking = false;
+    setMic(onCall);
+    if (onCall) startListening();
+  }
+
   function speak(text, t) {
-    if (!('speechSynthesis' in window) || (window.Arcade && Arcade.isMuted())) return;
+    if (!('speechSynthesis' in window) || (window.Arcade && Arcade.isMuted())) {
+      afterSpeech();
+      return;
+    }
+    stopListening();
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     const idx = TEACHERS.indexOf(t);
     if (voices.length) u.voice = voices[idx % voices.length];
     u.pitch = t.pitch;
     u.rate = t.rate;
+    speaking = true;
+    setMic(false, true);
+    u.onend = afterSpeech;
+    u.onerror = afterSpeech;
     speechSynthesis.speak(u);
+  }
+
+  function setMic(listening, talking) {
+    if (!micEl) return;
+    micEl.hidden = !onCall;
+    micEl.textContent = talking ? '🔊 Teacher speaking…' : '🎤 Listening…';
+  }
+
+  function startListening() {
+    if (!SR || !onCall || speaking) return;
+    if (!recog) {
+      recog = new SR();
+      recog.lang = 'en-US';
+      recog.continuous = false;
+      recog.interimResults = false;
+      recog.onresult = (e) => {
+        const text = e.results[0][0].transcript.trim();
+        if (text) sendMessage(text, true);
+      };
+      recog.onend = () => {
+        if (onCall && !speaking) setTimeout(startListening, 300);
+      };
+      recog.onerror = () => {};
+    }
+    try { recog.start(); } catch (e) { /* already running */ }
+  }
+
+  function stopListening() {
+    if (recog) {
+      try { recog.onend = null; recog.abort(); } catch (e) { /* ignore */ }
+      recog = null;
+    }
+  }
+
+  async function startCam() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    try {
+      camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      camEl.srcObject = camStream;
+      camEl.hidden = false;
+    } catch (e) {
+      addBubble('them', "I can't see you yet because camera access was blocked. We can still talk!");
+    }
+  }
+
+  function stopCam() {
+    if (camStream) camStream.getTracks().forEach(t => t.stop());
+    camStream = null;
+    camEl.srcObject = null;
+    camEl.hidden = true;
   }
 
   function answer(t, text) {
@@ -129,6 +207,16 @@
     div.textContent = text;
     logEl.appendChild(div);
     logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function sendMessage(text, spoken) {
+    if (!current) return;
+    addBubble('me', text);
+    const reply = answer(current, text);
+    setTimeout(() => {
+      addBubble('them', reply);
+      if (onCall) speak(reply, current);
+    }, 350);
   }
 
   function renderGrid() {
@@ -155,7 +243,7 @@
     nameEl.textContent = t.name;
     subEl.textContent = t.subject + ' teacher';
     logEl.innerHTML = '';
-    addBubble('them', `Hi! I'm ${t.name}, your ${t.subject} teacher. Message me or hit Call to talk.`);
+    addBubble('them', `Hi! I'm ${t.name}, your ${t.subject} teacher. Message me or hit Call to talk out loud.`);
     input.focus();
   }
 
@@ -171,7 +259,8 @@
     onCall = true;
     callBtn.textContent = '📴 Hang up';
     callBtn.classList.add('live');
-    speak(`Hi! This is ${current.name}. What would you like to learn about ${current.subject}?`, current);
+    startCam();
+    speak(`Hi! This is ${current.name}. I can hear you now, so ask me anything about ${current.subject}.`, current);
   }
 
   function endCall(speakBye) {
@@ -179,7 +268,11 @@
     onCall = false;
     callBtn.textContent = '📞 Call';
     callBtn.classList.remove('live');
+    stopListening();
+    stopCam();
+    speaking = false;
     if ('speechSynthesis' in window) speechSynthesis.cancel();
+    setMic(false);
     if (speakBye && current) addBubble('them', 'Call ended. Keep learning!');
   }
 
@@ -192,14 +285,9 @@
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = input.value.trim();
-    if (!text || !current) return;
+    if (!text) return;
     input.value = '';
-    addBubble('me', text);
-    const reply = answer(current, text);
-    setTimeout(() => {
-      addBubble('them', reply);
-      if (onCall) speak(reply, current);
-    }, 350);
+    sendMessage(text, false);
   });
 
   ['teachersBtn', 'teachersNav'].forEach(id => {
