@@ -1,3 +1,39 @@
+.topbar-home {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 16px;
+}
+.topbar-home .brand {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #fff;
+  text-decoration: none;
+}
+.topnav { display: flex; gap: 24px; align-items: center; }
+.topnav a, .navlink {
+  color: #cfcfe8;
+  text-decoration: none;
+  font-weight: 600;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0;
+}
+.topnav a:hover, .navlink:hover { color: #fff; }
+.top-cta {
+  background: #ff3d8b;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 700;
+}
 .hero {
   text-align: center;
   padding: 56px 16px 40px;

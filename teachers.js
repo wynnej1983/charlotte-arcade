@@ -202,9 +202,11 @@
     }, 350);
   });
 
-  document.getElementById('teachersBtn').addEventListener('click', () => {
-    renderGrid();
-    closeChat();
-    overlay.hidden = false;
+  ['teachersBtn', 'teachersNav'].forEach(id => {
+    document.getElementById(id).addEventListener('click', () => {
+      renderGrid();
+      closeChat();
+      overlay.hidden = false;
+    });
   });
 })();
