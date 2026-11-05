@@ -94,6 +94,17 @@
   const input = document.getElementById('tchInput');
   const camEl = document.getElementById('tchCam');
   const micEl = document.getElementById('tchMic');
+  const callScreen = document.getElementById('callScreen');
+  const csFace = document.getElementById('csFace');
+  const csName = document.getElementById('csName');
+  const csSub = document.getElementById('csSub');
+  const csStatus = document.getElementById('csStatus');
+  const csTimer = document.getElementById('csTimer');
+  const csCam = document.getElementById('csCam');
+  const csMic = document.getElementById('csMic');
+  let micOff = false;
+  let timerHandle = null;
+  let callSeconds = 0;
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const GOOD_VOICE = /premium|enhanced|natural|neural|google|samantha|daniel|karen|moira|serena|tessa/i;
@@ -146,10 +157,13 @@
     if (!micEl) return;
     micEl.hidden = !onCall;
     micEl.textContent = talking ? '🔊 Teacher speaking…' : '🎤 Listening…';
+    if (csStatus) {
+      csStatus.textContent = !onCall ? '' : talking ? '🔊 Speaking…' : micOff ? 'Mic off — tap Mic on to talk' : '🎤 Listening…';
+    }
   }
 
   function startListening() {
-    if (!SR || !onCall || speaking) return;
+    if (!SR || !onCall || speaking || micOff) return;
     if (!recog) {
       recog = new SR();
       recog.lang = 'en-US';
@@ -180,6 +194,8 @@
       camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       camEl.srcObject = camStream;
       camEl.hidden = false;
+      csCam.srcObject = camStream;
+      csCam.hidden = false;
     } catch (e) {
       addBubble('them', "I can't see you yet because camera access was blocked. We can still talk!");
     }
@@ -190,6 +206,8 @@
     camStream = null;
     camEl.srcObject = null;
     camEl.hidden = true;
+    csCam.srcObject = null;
+    csCam.hidden = true;
   }
 
   function answer(t, text) {
@@ -257,8 +275,22 @@
   function startCall() {
     if (!current) return;
     onCall = true;
+    micOff = false;
+    csMic.textContent = '🎤 Mic on';
     callBtn.textContent = '📴 Hang up';
     callBtn.classList.add('live');
+    csFace.textContent = current.emoji;
+    csFace.style.setProperty('--c', current.color);
+    csName.textContent = current.name;
+    csSub.textContent = current.subject + ' teacher';
+    callSeconds = 0;
+    csTimer.textContent = '0:00';
+    clearInterval(timerHandle);
+    timerHandle = setInterval(() => {
+      callSeconds++;
+      csTimer.textContent = `${Math.floor(callSeconds / 60)}:${String(callSeconds % 60).padStart(2, '0')}`;
+    }, 1000);
+    callScreen.hidden = false;
     startCam();
     speak(`Hi! This is ${current.name}. I can hear you now, so ask me anything about ${current.subject}.`, current);
   }
@@ -266,6 +298,8 @@
   function endCall(speakBye) {
     if (!onCall) return;
     onCall = false;
+    clearInterval(timerHandle);
+    callScreen.hidden = true;
     callBtn.textContent = '📞 Call';
     callBtn.classList.remove('live');
     stopListening();
@@ -277,6 +311,18 @@
   }
 
   callBtn.addEventListener('click', () => (onCall ? endCall(true) : startCall()));
+  document.getElementById('csEnd').addEventListener('click', () => endCall(true));
+  csMic.addEventListener('click', () => {
+    micOff = !micOff;
+    csMic.textContent = micOff ? '🔇 Mic off' : '🎤 Mic on';
+    if (micOff) {
+      stopListening();
+      setMic(true);
+    } else {
+      setMic(true);
+      startListening();
+    }
+  });
   document.getElementById('tchBack').addEventListener('click', closeChat);
   document.getElementById('tchClose').addEventListener('click', () => { closeChat(); overlay.hidden = true; });
   overlay.addEventListener('click', (e) => { if (e.target === overlay) { closeChat(); overlay.hidden = true; } });

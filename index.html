@@ -411,6 +411,24 @@
   </div>
 </div>
 
+<div class="call-screen" id="callScreen" hidden>
+  <div class="call-top">
+    <span class="call-live">● LIVE CALL</span>
+    <span id="csTimer">0:00</span>
+  </div>
+  <div class="call-center">
+    <div class="call-avatar" id="csFace"></div>
+    <h2 id="csName"></h2>
+    <p class="call-sub" id="csSub"></p>
+    <p class="call-status" id="csStatus">Connecting…</p>
+  </div>
+  <video class="call-cam" id="csCam" autoplay muted playsinline hidden></video>
+  <div class="call-controls">
+    <button id="csMic">🎤 Mic on</button>
+    <button class="call-end" id="csEnd">📴 End call</button>
+  </div>
+</div>
+
 <footer style="color: #00ffff; text-shadow: 0 0 10px rgba(0, 255, 255, 0.6); font-weight: 700; letter-spacing: 1px;">
   🎮 ALL SCORES SAVED LOCALLY 🎮 BECOME THE ARCADE LEGEND 🎮
 </footer>
