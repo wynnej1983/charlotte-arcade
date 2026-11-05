@@ -128,8 +128,12 @@
     loadVoices();
   }
 
+  let lastSpoken = '';
+  let speakEndedAt = 0;
+
   function afterSpeech() {
     speaking = false;
+    speakEndedAt = Date.now();
     setMic(onCall);
     if (onCall) startListening();
   }
@@ -141,6 +145,7 @@
     }
     stopListening();
     speechSynthesis.cancel();
+    lastSpoken = text;
     const u = new SpeechSynthesisUtterance(text);
     const idx = TEACHERS.indexOf(t);
     if (voices.length) u.voice = voices[idx % voices.length];
@@ -175,7 +180,11 @@
       recog.interimResults = false;
       recog.onresult = (e) => {
         const text = e.results[0][0].transcript.trim();
-        if (text) sendMessage(text, true);
+        if (!text) return;
+        // Ignore the mic hearing the teacher's own voice (echo), which caused loops.
+        if (Date.now() - speakEndedAt < 2000) return;
+        if (lastSpoken && lastSpoken.toLowerCase().includes(text.toLowerCase())) return;
+        sendMessage(text, true);
       };
       recog.onend = () => {
         if (onCall && !speaking) setTimeout(startListening, 300);
