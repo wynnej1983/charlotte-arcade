@@ -1,3 +1,78 @@
+.hero {
+  text-align: center;
+  padding: 56px 16px 40px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+.hero-badge {
+  display: inline-block;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.04);
+  border-radius: 999px;
+  padding: 8px 18px;
+  color: #cfcfe8;
+  font-size: 0.9rem;
+}
+.hero-title {
+  font-size: clamp(2.6rem, 8vw, 5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  margin: 26px 0 18px;
+  letter-spacing: -1px;
+  color: #fff;
+}
+.hero-title .accent { color: #ff3d8b; }
+.hero-sub {
+  color: #9d9db8;
+  font-size: 1.15rem;
+  max-width: 620px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+.hero-cta {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 34px 0 40px;
+}
+.hero-btn {
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 16px 30px;
+  border-radius: 999px;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-family: inherit;
+}
+.hero-btn.primary-cta {
+  background: #ff3d8b;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(255, 61, 139, 0.35);
+}
+.hero-btn.ghost-cta {
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255,255,255,0.25);
+}
+.hero-stats {
+  display: flex;
+  justify-content: center;
+  gap: 56px;
+  flex-wrap: wrap;
+}
+.hero-stats b {
+  display: block;
+  font-size: 2.2rem;
+  color: #fff;
+}
+.hero-stats span {
+  color: #8a8aa6;
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+}
+
 .tch-overlay {
   position: fixed;
   inset: 0;
