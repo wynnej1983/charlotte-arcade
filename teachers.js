@@ -163,7 +163,11 @@
   }
 
   function startListening() {
-    if (!SR || !onCall || speaking || micOff) return;
+    if (!SR) {
+      if (csStatus && onCall) csStatus.textContent = "This browser can't listen to speech. Try Chrome, Edge, or Safari.";
+      return;
+    }
+    if (!onCall || speaking || micOff) return;
     if (!recog) {
       recog = new SR();
       recog.lang = 'en-US';
@@ -176,7 +180,16 @@
       recog.onend = () => {
         if (onCall && !speaking) setTimeout(startListening, 300);
       };
-      recog.onerror = () => {};
+      recog.onerror = (e) => {
+        const msgs = {
+          'not-allowed': 'Mic blocked. Click the lock icon in the address bar and allow the microphone.',
+          'service-not-allowed': 'Speech recognition is blocked by this browser. Try Chrome or Safari.',
+          'no-speech': 'I did not hear anything. Tap Mic on and try again.',
+          'audio-capture': 'No microphone found.',
+          'network': 'Speech recognition needs an internet connection.'
+        };
+        if (csStatus && onCall) csStatus.textContent = msgs[e.error] || `Mic error: ${e.error}`;
+      };
     }
     try { recog.start(); } catch (e) { /* already running */ }
   }
@@ -190,6 +203,12 @@
 
   async function startCam() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    try {
+      const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mic.getTracks().forEach(t => t.stop());
+    } catch (e) {
+      if (csStatus) csStatus.textContent = 'Mic blocked. Allow the microphone for this site, then try again.';
+    }
     try {
       camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       camEl.srcObject = camStream;
