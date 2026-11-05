@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Charlotte Arcade — 14 GAMES</title>
 <link rel="stylesheet" href="shared.css" />
+<link rel="stylesheet" href="teachers.css" />
 <style>
   body {
     background: repeating-linear-gradient(45deg, #0f0a1f, #0f0a1f 20px, #1a0f2e 20px, #1a0f2e 40px) !important;
@@ -225,6 +226,9 @@
 <canvas id="fx"></canvas>
 
 <div class="arcade-cabinet">
+  <div style="display:flex; justify-content:center; margin-bottom:14px;">
+    <button class="primary" id="teachersBtn" title="Talk to an AI teacher" style="font-size:1.1rem; padding:14px 28px;">🎓 TALK TO A TEACHER</button>
+  </div>
   <div class="cabinet-top">
     <div class="cabinet-inner">
       <div class="title-banner">
@@ -360,11 +364,35 @@
   </div>
 </div>
 
+<div class="tch-overlay" id="tchOverlay" hidden>
+  <div class="tch-modal">
+    <div class="tch-head">
+      <h2>🎓 AI TEACHERS</h2>
+      <button class="icon" id="tchClose" aria-label="Close">✕</button>
+    </div>
+    <div id="tchGrid"></div>
+    <div id="tchChat" hidden>
+      <div class="tch-chat-head">
+        <span id="tchFace"></span>
+        <div><b id="tchName"></b><div class="tch-sub" id="tchSub"></div></div>
+        <button id="tchCall">📞 Call</button>
+        <button id="tchBack">← All teachers</button>
+      </div>
+      <div class="tch-log" id="tchLog"></div>
+      <form class="tch-form" id="tchForm">
+        <input id="tchInput" placeholder="Ask your teacher something…" autocomplete="off" />
+        <button class="primary" type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+</div>
+
 <footer style="color: #00ffff; text-shadow: 0 0 10px rgba(0, 255, 255, 0.6); font-weight: 700; letter-spacing: 1px;">
   🎮 ALL SCORES SAVED LOCALLY 🎮 BECOME THE ARCADE LEGEND 🎮
 </footer>
 
 <script src="shared.js"></script>
+<script src="teachers.js"></script>
 <script>
   let playerName = localStorage.getItem('arcade-player-name') || 'PLAYER';
 
