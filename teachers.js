@@ -355,6 +355,16 @@
     sendMessage(text, false);
   });
 
+  const csForm = document.getElementById('csForm');
+  const csInput = document.getElementById('csInput');
+  csForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = csInput.value.trim();
+    if (!text) return;
+    csInput.value = '';
+    sendMessage(text, false);
+  });
+
   ['teachersBtn', 'teachersNav'].forEach(id => {
     document.getElementById(id).addEventListener('click', () => {
       renderGrid();
