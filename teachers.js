@@ -82,6 +82,210 @@
     ]}
   ];
 
+  const EXTRA = {
+    'Ms. Byte': [
+      [['loop', 'for', 'while'], 'A loop repeats steps. A for loop runs a set number of times, and a while loop runs as long as a condition stays true.'],
+      [['array', 'list'], 'An array is an ordered list of values. You reach each item by its position, and counting starts at 0.'],
+      [['if', 'condition'], 'An if statement runs code only when a condition is true. Add else to handle the other case.'],
+      [['bug', 'debug'], 'Debugging means finding why code misbehaves. Print values or step through one line at a time.'],
+      [['object'], 'An object groups related values under named keys, like {name: "Sam", age: 9}.'],
+      [['html'], 'HTML describes a page: headings, paragraphs, and buttons. CSS styles it, and JavaScript makes it interactive.'],
+      [['git', 'commit'], 'Git saves snapshots of your project called commits, so you can see its history and undo mistakes.'],
+      [['api'], 'An API is a set of rules that lets one program ask another for data or services.']
+    ],
+    'Dr. Quark': [
+      [['newton', 'law'], "Newton's third law says every action has an equal and opposite reaction."],
+      [['energy'], 'Energy cannot be created or destroyed, only changed from one form into another.'],
+      [['light', 'speed'], 'Light travels at about 300,000 kilometers per second in a vacuum.'],
+      [['electric', 'current', 'volt'], 'Voltage pushes electric current through a circuit, and resistance slows the current down.'],
+      [['magnet'], 'Magnets have a north and south pole. Opposite poles attract, and matching poles repel.'],
+      [['heat', 'temperature'], 'Heat flows from hotter objects to cooler ones until they reach the same temperature.'],
+      [['wave', 'sound'], 'Sound is a wave of vibrations moving through matter. Higher frequency means a higher pitch.'],
+      [['motion', 'velocity', 'speed'], 'Speed is distance divided by time. Velocity also includes direction.']
+    ],
+    'Prof. Flask': [
+      [['molecule', 'bond'], 'Molecules form when atoms share or transfer electrons to form bonds, as in H2O for water.'],
+      [['element', 'periodic'], 'The periodic table lists elements by atomic number, the number of protons in each atom.'],
+      [['reaction', 'react'], 'In a chemical reaction, reactants turn into products. Atoms are rearranged, not destroyed.'],
+      [['ion'], 'An ion is an atom with a charge, because it has gained or lost electrons.'],
+      [['mole'], 'A mole is 6.022 × 10²³ particles, a counting unit that links atoms to grams.'],
+      [['gas'], 'Gas particles move fast and far apart. Warming a gas makes its particles move even faster.'],
+      [['salt', 'sodium'], 'Table salt is sodium chloride, formed when sodium and chlorine atoms bond.'],
+      [['density'], 'Density is mass divided by volume. Objects less dense than water float on it.']
+    ],
+    'Dr. Fern': [
+      [['dna', 'gene'], 'DNA carries the instructions for building and running an organism. Genes are segments of DNA.'],
+      [['evolution', 'natural selection'], 'Natural selection favors traits that help organisms survive and reproduce, so those traits spread over generations.'],
+      [['ecosystem', 'food chain'], 'An ecosystem includes living things and their environment. Energy flows through food chains from producers to consumers.'],
+      [['virus', 'bacteria', 'germ'], 'Bacteria are single-celled living things. Viruses are much smaller and need a host cell to reproduce.'],
+      [['mitochondria'], 'Mitochondria release energy from food to power the cell, which is why they are called its powerhouse.'],
+      [['immune'], 'Your immune system defends the body from germs using white blood cells and antibodies.'],
+      [['heredity', 'inherit'], 'You inherit traits through genes. Each parent passes on one copy of each gene.'],
+      [['mammal', 'animal'], 'Mammals have hair and feed their young milk. Birds have feathers, and reptiles have scales.']
+    ],
+    'Mr. Chronos': [
+      [['egypt', 'pyramid'], 'The Great Pyramid of Giza was built around 2560 BCE as a tomb for the pharaoh Khufu.'],
+      [['revolution', 'american'], 'The American Revolution, from 1775 to 1783, won independence from Britain and created the United States.'],
+      [['medieval', 'middle ages'], 'The Middle Ages lasted roughly from the 5th to the 15th century in Europe.'],
+      [['renaissance'], 'The Renaissance was a period of renewed interest in art, science, and learning that began in Italy in the 1300s.'],
+      [['cold war'], 'The Cold War was a tense rivalry between the United States and the Soviet Union from about 1947 to 1991.'],
+      [['silk road'], 'The Silk Road was a network of trade routes linking China with the Mediterranean world.'],
+      [['industrial'], 'The Industrial Revolution moved work from farms and homes into factories, starting in Britain in the late 1700s.'],
+      [['ancient', 'civilization'], 'Early civilizations like Mesopotamia, Egypt, and the Indus Valley grew along rivers.']
+    ],
+    'Ms. Atlas': [
+      [['mountain', 'everest'], 'Mount Everest, on the Nepal and China border, is Earth’s highest mountain above sea level, at about 8,849 meters.'],
+      [['river', 'nile', 'amazon'], 'The Nile and the Amazon are often named as the longest and largest rivers, though their exact lengths are debated.'],
+      [['continent'], 'There are seven continents: Africa, Antarctica, Asia, Australia, Europe, North America, and South America.'],
+      [['desert'], 'Antarctica is technically the largest desert, because it gets very little precipitation.'],
+      [['climate'], 'Climate is the usual weather in a place over many years. Latitude and altitude strongly shape it.'],
+      [['latitude', 'longitude', 'map'], 'Latitude measures north and south of the equator. Longitude measures east and west of the prime meridian.'],
+      [['population'], 'India and China are the most populous countries, together home to over a third of all people.'],
+      [['island'], 'Greenland is the world’s largest island that is not a continent.']
+    ],
+    'Prof. Nova': [
+      [['moon'], 'The Moon orbits Earth about once every 27 days, and we always see the same side of it.'],
+      [['galaxy', 'milky way'], 'The Milky Way is our home galaxy, a spiral of billions of stars, including our Sun.'],
+      [['black hole'], 'A black hole has gravity so strong that not even light can escape from it.'],
+      [['comet', 'asteroid'], 'Comets are icy bodies that grow tails near the Sun. Asteroids are rocky leftovers from the early solar system.'],
+      [['light year', 'distance'], 'A light year is the distance light travels in one year, about 9.46 trillion kilometers.'],
+      [['eclipse'], 'A solar eclipse happens when the Moon passes between Earth and the Sun.'],
+      [['telescope'], 'Telescopes collect light to see faint objects. Bigger mirrors and lenses gather more light.'],
+      [['universe', 'big bang'], 'The Big Bang theory says the universe began about 13.8 billion years ago and has been expanding ever since.']
+    ],
+    'Señora Luna': [
+      [['ser', 'estar', 'verb'], 'In Spanish, ser and estar both mean "to be." Use ser for lasting traits and estar for states and locations.'],
+      [['number', 'uno', 'dos'], 'Spanish numbers: uno, dos, tres, cuatro, cinco, seis, siete, ocho, nueve, diez.'],
+      [['color', 'rojo'], 'Colors in Spanish: rojo (red), azul (blue), verde (green), amarillo (yellow).'],
+      [['food', 'comida'], 'Useful food words: pan (bread), agua (water), leche (milk), and manzana (apple).'],
+      [['please', 'por favor'], '"Por favor" means "please." Use it when asking for something politely.'],
+      [['goodbye', 'adiós'], '"Adiós" means "goodbye." Casually you can say "hasta luego," which means "see you later."'],
+      [['yes', 'no', 'sí'], '"Sí" means "yes" and "no" means "no."'],
+      [['name', 'llamo'], 'To say your name in Spanish, say "Me llamo" followed by your name, like "Me llamo Ana."']
+    ],
+    'Monsieur Bonjour': [
+      [['please', 'plaît'], '"S\'il vous plaît" means "please." It is the polite way to ask for something.'],
+      [['yes', 'oui', 'non'], '"Oui" means "yes" and "non" means "no."'],
+      [['number', 'deux', 'trois'], 'French numbers start: un, deux, trois, quatre, cinq, six, sept, huit, neuf, dix.'],
+      [['goodbye', 'au revoir'], '"Au revoir" means "goodbye." Use it when you are leaving.'],
+      [['name', 'appelle'], 'To say your name in French, say "Je m\'appelle" followed by your name.'],
+      [['food', 'pain', 'eau'], 'Some food words: pain (bread), eau (water), fromage (cheese), and pomme (apple).'],
+      [['color', 'rouge', 'bleu'], 'Colors in French: rouge (red), bleu (blue), vert (green), jaune (yellow).'],
+      [['how are you', 'comment'], '"Comment allez-vous?" means "How are you?" A common reply is "Très bien, merci," meaning "Very well, thanks."']
+    ],
+    'Maestro Tempo': [
+      [['chord'], 'A chord is three or more notes played together. Major chords sound bright, and minor chords sound more somber.'],
+      [['key signature', 'key'], 'The key signature shows which notes are sharp or flat throughout a piece.'],
+      [['time signature', '4/4', 'meter'], 'A time signature like 4/4 means four beats per measure, with a quarter note getting one beat.'],
+      [['sharp', 'flat'], 'A sharp raises a note by a half step. A flat lowers it by a half step.'],
+      [['octave'], 'An octave is the distance from one note to the next note with the same name, and it doubles the frequency.'],
+      [['instrument', 'piano', 'guitar'], 'A piano has 88 keys. A standard guitar has six strings, tuned E, A, D, G, B, E.'],
+      [['melody'], 'A melody is a sequence of single notes that forms the main tune of a song.'],
+      [['harmony'], 'Harmony is notes played together in a pleasing way, usually built from chords.']
+    ],
+    'Ms. Palette': [
+      [['shade', 'tint', 'tone'], 'A tint is a color with white added. A shade is a color with black added.'],
+      [['contrast'], 'Contrast is the difference between light and dark or between colors. It helps the eye find what matters.'],
+      [['composition', 'thirds'], 'The rule of thirds splits an image into a 3×3 grid. Placing key subjects on the lines makes a picture balanced.'],
+      [['warm', 'cool'], 'Warm colors like red and orange feel energetic. Cool colors like blue and green feel calm.'],
+      [['sketch', 'draw'], 'Start drawing with basic shapes: circles, squares, and triangles, then build the details on top.'],
+      [['complementary'], 'Complementary colors sit opposite each other on the color wheel, like blue and orange.'],
+      [['texture'], 'Texture is how a surface looks or feels. Artists show it with brushstrokes, lines, and shading.'],
+      [['impression'], 'Impressionist painters used visible brushstrokes to capture light and movement.']
+    ],
+    'Dr. Digit': [
+      [['fraction'], 'A fraction shows part of a whole. To add fractions, make the denominators match first.'],
+      [['percent', '%'], 'Percent means per hundred. To find 25% of 80, multiply 80 by 0.25 to get 20.'],
+      [['area'], 'Area is the space inside a shape. A rectangle’s area is length times width.'],
+      [['perimeter'], 'Perimeter is the distance around a shape. Add up all of its sides.'],
+      [['equation', 'solve'], 'To solve for x, do the same operation to both sides until x is alone.'],
+      [['multiply', 'times', '×'], 'Multiplication is repeated addition: 4 × 3 means 4 added three times, which is 12.'],
+      [['divide', 'division'], 'Division splits a number into equal groups. 12 ÷ 3 = 4, because 3 groups of 4 make 12.'],
+      [['average', 'mean'], 'The mean is the sum of the numbers divided by how many numbers there are.']
+    ],
+    'Mr. Logic': [
+      [['pattern', 'sequence'], 'To find a pattern, look at how each term changes from the one before it.'],
+      [['sudoku'], 'In Sudoku, each row, column, and 3×3 box must contain 1 to 9 with no repeats. Start with cells that have only one possible number.'],
+      [['venn'], 'A Venn diagram shows how groups overlap. The middle section holds things that belong to both groups.'],
+      [['if then', 'implies'], 'If A then B means that whenever A is true, B must be true. But B being true does not prove A.'],
+      [['truth table'], 'A truth table lists every combination of true and false inputs to show a statement’s output.'],
+      [['binary', 'bit'], 'Binary uses only 0 and 1. Each place doubles, so 101 in binary equals 5.'],
+      [['deduce', 'clue'], 'To deduce, start with the strictest clues, then rule out the options they cannot be.'],
+      [['fallacy'], 'A fallacy is a flawed argument, such as attacking the person instead of answering their point.']
+    ],
+    'Dr. Pulse': [
+      [['exercise', 'workout'], 'Adults should aim for about 150 minutes of moderate exercise a week, plus strength work twice a week.'],
+      [['water', 'hydrat'], 'Drinking water helps regulate body temperature and blood pressure. Thirst is a good signal to drink.'],
+      [['breath', 'lung'], 'Your lungs swap oxygen and carbon dioxide. Slow, deep breathing can help calm your body.'],
+      [['bone', 'skeleton'], 'Adults have 206 bones. Babies have more, and some fuse together as they grow.'],
+      [['food', 'nutrition', 'vegetable'], 'A balanced plate includes vegetables, fruit, whole grains, lean protein, and healthy fats.'],
+      [['stress'], 'Short-term stress can help you focus. Long-term stress can affect sleep, mood, and heart health.'],
+      [['wash', 'hand'], 'Washing your hands with soap for about 20 seconds removes germs effectively.'],
+      [['muscle'], 'Muscles work in pairs. One contracts while the other relaxes to move a joint.']
+    ],
+    'Ms. Sage': [
+      [['plato'], 'Plato wrote dialogues in which Socrates questions people to search for the truth.'],
+      [['mind', 'consciousness'], 'Philosophers debate whether the mind is the same thing as the brain.'],
+      [['free will'], 'Free will asks whether we truly choose our actions, or whether earlier events cause them.'],
+      [['meaning'], 'Existentialists argue that people create meaning through the choices they make.'],
+      [['argument', 'logic'], 'A valid argument has a conclusion that follows from its premises. A sound argument is valid and has true premises.'],
+      [['beauty'], 'Philosophers ask whether beauty is in the object or in the experience of the viewer.'],
+      [['justice', 'fair'], 'Justice often means giving each person what they are due, though people disagree about what that is.'],
+      [['why'], 'Asking why again and again is a classic way to dig deeper into any idea.']
+    ],
+    'Dr. Psyche': [
+      [['emotion', 'feel'], 'Emotions are short reactions to events. Naming a feeling can help reduce its intensity.'],
+      [['motivation', 'goal'], 'Small, specific goals are easier to stick with than vague, big ones.'],
+      [['dream'], 'Many dreams happen during REM sleep, a stage of the sleep cycle with rapid eye movements.'],
+      [['anxiety', 'worry'], 'Anxiety is a normal response to threat. Slow breathing and facing fears in small steps can help.'],
+      [['personality'], 'Personality traits like openness are measured on spectrums, not as all-or-nothing types.'],
+      [['pavlov', 'conditioning'], 'Classical conditioning pairs a neutral cue with a meaningful event until the cue alone triggers a response.'],
+      [['friend', 'social'], 'People tend to like others who are similar to them and who show interest in them.'],
+      [['confidence', 'self-esteem'], 'Self-esteem grows from doing what you set out to do and finishing it.']
+    ],
+    'Ms. Quill': [
+      [['paragraph'], 'A good paragraph starts with a topic sentence, adds supporting details, and ends by tying it all together.'],
+      [['verb', 'adjective', 'noun'], 'Nouns name things, verbs show action, and adjectives describe nouns.'],
+      [['punctuation', 'comma'], 'Use a comma to separate items in a list, and before a joining word between two complete sentences.'],
+      [['character'], 'Strong characters want something and face obstacles to get it.'],
+      [['show', 'tell'], 'Show, don’t tell means letting actions and details reveal feelings instead of stating them.'],
+      [['poem', 'rhyme'], 'A poem can rhyme or not. Rhythm and imagery matter as much as rhyme.'],
+      [['revise', 'edit', 'draft'], 'Revision means rewriting for clarity. Reading your work aloud helps you catch awkward sentences.'],
+      [['hook', 'opening'], 'A strong opening hook grabs the reader with a question, a surprising fact, or a vivid image.']
+    ],
+    'Mr. Terra': [
+      [['fossil'], 'Fossils are preserved remains or traces of ancient life, usually found in sedimentary rock.'],
+      [['layer', 'crust', 'mantle', 'core'], 'Earth has layers: the crust, the mantle, the outer core, and the inner core.'],
+      [['erosion', 'weather'], 'Erosion wears rock away with water, wind, and ice, and carries the sediment to new places.'],
+      [['tectonic', 'plate'], 'Tectonic plates are huge slabs of Earth’s crust that slowly drift on the mantle.'],
+      [['diamond', 'gem'], 'Diamonds form deep underground under extreme heat and pressure, from carbon atoms.'],
+      [['cave', 'limestone'], 'Caves often form in limestone, when slightly acidic water slowly dissolves the rock.'],
+      [['mountain'], 'Mountains like the Himalayas form when tectonic plates collide and push up the crust.'],
+      [['time', 'age', 'date'], 'Geologists use rock layers and fossils to date events, going back billions of years.']
+    ],
+    'Grandmaster Rook': [
+      [['pawn'], 'Pawns move forward one square, or two on their first move. They capture diagonally.'],
+      [['bishop'], 'Bishops move diagonally any number of squares, and each stays on the same color all game.'],
+      [['knight'], 'Knights move in an L shape and can jump over other pieces.'],
+      [['queen'], 'The queen is the strongest piece. It moves like a rook and a bishop combined.'],
+      [['checkmate', 'check'], 'Checkmate happens when the king is attacked and has no legal move to escape.'],
+      [['endgame'], 'In the endgame, the king becomes active and helps push pawns toward promotion.'],
+      [['stalemate', 'draw'], 'Stalemate is a draw: a player has no legal moves but is not in check.'],
+      [['fork'], 'A fork is when one piece attacks two enemy pieces at once.']
+    ],
+    'Mr. Ledger': [
+      [['inflation'], 'Inflation is a general rise in prices over time, so each dollar buys less.'],
+      [['budget'], 'A budget lists your income and expenses so you can plan where money goes.'],
+      [['trade', 'import', 'export'], 'Trade lets countries specialize. Each exports what it makes efficiently and imports what it does not.'],
+      [['opportunity cost', 'scarcity'], 'Opportunity cost is what you give up when you choose one option over another.'],
+      [['stock', 'share'], 'A share of stock is a small piece of ownership in a company.'],
+      [['gdp'], 'GDP measures the total value of goods and services a country produces in a year.'],
+      [['loan', 'debt', 'credit'], 'A loan must be paid back with interest. Paying only the minimum on a credit card can make debt grow fast.'],
+      [['tax'], 'Taxes fund public services like roads, schools, and emergency services.']
+    ]
+  };
+  TEACHERS.forEach(t => { t.facts = t.facts.concat(EXTRA[t.name] || []); });
+
   const overlay = document.getElementById('tchOverlay');
   const grid = document.getElementById('tchGrid');
   const chat = document.getElementById('tchChat');
