@@ -238,13 +238,23 @@
     csCam.hidden = true;
   }
 
+  let lastFallback = -1;
+
   function answer(t, text) {
     const q = text.toLowerCase();
     for (const [keys, reply] of t.facts) {
       if (keys.some(k => q.includes(k))) return reply;
     }
-    const topics = t.facts.map(f => f[0][0]).join(', ');
-    return `Good question! I teach ${t.subject}. Try asking me about: ${topics}.`;
+    const fallbacks = [
+      `That's a great question about ${t.subject}! I only have a few lessons loaded right now, so try asking me about ${t.facts[0][0][0]}.`,
+      `Let's keep going with ${t.subject}. Ask me about ${t.facts[1] ? t.facts[1][0][0] : t.facts[0][0][0]} and I'll explain.`,
+      `I'm still learning this one. Try a different ${t.subject} question, or ask about ${t.facts[0][0][0]}.`
+    ];
+    fallbacks.push(`Interesting! Ask me about ${t.facts[0][0][0]} or ${t.facts[t.facts.length - 1][0][0]}.`);
+    fallbacks.push(`Tell me what part of ${t.subject} you're curious about, and I'll do my best.`);
+    fallbacks.push(`Good thinking! Try asking me something specific, like ${t.facts[0][0][0]}.`);
+    lastFallback = (lastFallback + 1) % fallbacks.length;
+    return fallbacks[lastFallback];
   }
 
   function addBubble(who, text) {
